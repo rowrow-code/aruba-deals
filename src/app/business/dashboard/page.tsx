@@ -113,6 +113,36 @@ export default function BusinessDashboardPage() {
     )
   }
 
+  if (business.status === 'pending') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-sm mx-auto px-4">
+          <div className="text-6xl mb-4">⏳</div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Application Under Review</h2>
+          <p className="text-gray-500 mb-2">
+            Thank you for registering <strong>{business.name}</strong>.
+          </p>
+          <p className="text-gray-500">We&apos;ll review your application and email you within 24 hours.</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (business.status === 'rejected') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-sm mx-auto px-4">
+          <div className="text-6xl mb-4">❌</div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Application Not Approved</h2>
+          <p className="text-gray-500 mb-6">
+            Unfortunately, your application for <strong>{business.name}</strong> was not approved.
+            Please contact us at storeroro07@gmail.com for more information.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}

@@ -1,11 +1,25 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Menu, X, MapPin } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return
+      const { data } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+      if (data?.role === 'admin') setIsAdmin(true)
+    })
+  }, [])
 
   return (
     <nav className="bg-white shadow-sm sticky top-0 z-50">
@@ -40,6 +54,11 @@ export default function Navbar() {
 
           {/* Desktop actions */}
           <div className="hidden md:flex items-center space-x-3">
+            {isAdmin && (
+              <Link href="/admin" className="bg-orange-100 hover:bg-orange-200 text-orange-700 px-4 py-2 rounded-lg font-medium transition-colors text-sm">
+                Admin
+              </Link>
+            )}
             <Link href="/auth/login" className="text-gray-700 hover:text-orange-500 font-medium transition-colors">
               Log in
             </Link>
@@ -69,6 +88,9 @@ export default function Navbar() {
           <Link href="/deals?category=Activities" className="block text-gray-700 font-medium py-2">Activities</Link>
           <Link href="/deals?category=Spa & Wellness" className="block text-gray-700 font-medium py-2">Spa &amp; Wellness</Link>
           <div className="border-t border-gray-100 pt-3 space-y-2">
+            {isAdmin && (
+              <Link href="/admin" className="block bg-orange-100 text-orange-700 px-4 py-2 rounded-lg font-medium text-center text-sm">Admin</Link>
+            )}
             <Link href="/auth/login" className="block text-gray-700 font-medium py-2">Log in</Link>
             <Link href="/auth/signup" className="block bg-orange-500 text-white px-4 py-2 rounded-lg font-medium text-center">Sign up</Link>
             <Link href="/business/dashboard" className="block border border-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium text-center text-sm">For Business</Link>

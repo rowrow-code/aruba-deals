@@ -6,6 +6,7 @@ export async function getDeals(category?: string): Promise<Deal[]> {
     .from('deals')
     .select('*, business:businesses(*)')
     .eq('is_active', true)
+    .or('expiration_date.is.null,expiration_date.gt.' + new Date().toISOString())
     .order('created_at', { ascending: false })
 
   if (error) throw error

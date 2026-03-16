@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, CheckCircle, Store } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 const categories = ['Restaurants', 'Activities', 'Spa & Wellness', 'Nightlife', 'Fitness', 'Other']
 
@@ -18,15 +19,69 @@ export default function BusinessRegisterPage() {
     phone: '',
     password: '',
   })
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleNext = (e: React.FormEvent) => {
     e.preventDefault()
     if (step < 3) setStep(step + 1)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setStep(4)
+    setSubmitting(true)
+    setError(null)
+
+    try {
+      // Create the user account
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: { full_name: formData.contactName, role: 'business' },
+        },
+      })
+
+      if (authError) throw authError
+
+      const userId = authData.user?.id
+      if (!userId) throw new Error('Failed to create account')
+
+      // Insert the business as pending
+      const { error: bizError } = await supabase.from('businesses').insert({
+        name: formData.businessName,
+        category: formData.category,
+        location: formData.location,
+        description: formData.description,
+        contact_name: formData.contactName,
+        contact_email: formData.email,
+        phone: formData.phone,
+        owner_id: userId,
+        status: 'pending',
+      })
+
+      if (bizError) throw bizError
+
+      // Send email notification to admin
+      await fetch('/api/notify-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessName: formData.businessName,
+          category: formData.category,
+          location: formData.location,
+          contactName: formData.contactName,
+          contactEmail: formData.email,
+          phone: formData.phone,
+        }),
+      })
+
+      setStep(4)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -185,8 +240,17 @@ export default function BusinessRegisterPage() {
               <div className="bg-orange-50 rounded-xl p-4 text-sm text-orange-700">
                 By registering, you agree to our terms of service. Your business will be reviewed before going live.
               </div>
-              <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3.5 rounded-xl transition-colors shadow-lg shadow-orange-200">
-                Submit Application
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600">
+                  {error}
+                </div>
+              )}
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-bold py-3.5 rounded-xl transition-colors shadow-lg shadow-orange-200"
+              >
+                {submitting ? 'Submitting...' : 'Submit Application'}
               </button>
             </form>
           )}

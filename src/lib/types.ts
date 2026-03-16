@@ -6,6 +6,10 @@ export interface Business {
   description: string
   image_url?: string
   owner_id: string
+  status: 'pending' | 'approved' | 'rejected'
+  contact_name?: string
+  contact_email?: string
+  phone?: string
   created_at: string
 }
 
