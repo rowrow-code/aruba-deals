@@ -9,6 +9,7 @@ export const mockBusinesses: Business[] = [
     description: 'Authentic local seafood experience',
     image_url: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800',
     owner_id: 'owner1',
+    status: 'approved' as const,
     created_at: new Date().toISOString()
   },
   {
@@ -19,6 +20,7 @@ export const mockBusinesses: Business[] = [
     description: 'Premier watersports center',
     image_url: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800',
     owner_id: 'owner2',
+    status: 'approved' as const,
     created_at: new Date().toISOString()
   },
   {
@@ -29,6 +31,7 @@ export const mockBusinesses: Business[] = [
     description: 'Luxury beachside spa treatments',
     image_url: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=800',
     owner_id: 'owner3',
+    status: 'approved' as const,
     created_at: new Date().toISOString()
   },
   {
@@ -39,6 +42,7 @@ export const mockBusinesses: Business[] = [
     description: 'Unforgettable sunset sailing tours',
     image_url: 'https://images.unsplash.com/photo-1500514966906-fe245eea9344?w=800',
     owner_id: 'owner4',
+    status: 'approved' as const,
     created_at: new Date().toISOString()
   },
   {
@@ -49,6 +53,7 @@ export const mockBusinesses: Business[] = [
     description: 'Classic Aruban cuisine in the heart of Oranjestad',
     image_url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
     owner_id: 'owner5',
+    status: 'approved' as const,
     created_at: new Date().toISOString()
   },
   {
@@ -59,6 +64,7 @@ export const mockBusinesses: Business[] = [
     description: 'Beach yoga and wellness retreats',
     image_url: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800',
     owner_id: 'owner6',
+    status: 'approved' as const,
     created_at: new Date().toISOString()
   },
 ]
