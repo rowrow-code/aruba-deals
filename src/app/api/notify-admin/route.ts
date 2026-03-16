@@ -26,7 +26,7 @@ export async function POST(request: Request) {
               <tr><td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Phone</td><td style="padding: 8px 0; font-weight: 600; color: #111827;">${phone || '—'}</td></tr>
             </table>
             <div style="margin-top: 24px; text-align: center;">
-              <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://aruba-deals.vercel.app'}/admin" style="display: inline-block; background: #f97316; color: white; font-weight: 700; padding: 12px 32px; border-radius: 10px; text-decoration: none;">
+              <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://aruba-deals.vercel.app'}/manage-x9k4" style="display: inline-block; background: #f97316; color: white; font-weight: 700; padding: 12px 32px; border-radius: 10px; text-decoration: none;">
                 Review in Admin Dashboard
               </a>
             </div>

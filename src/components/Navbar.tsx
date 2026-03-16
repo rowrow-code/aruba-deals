@@ -55,7 +55,7 @@ export default function Navbar() {
           {/* Desktop actions */}
           <div className="hidden md:flex items-center space-x-3">
             {isAdmin && (
-              <Link href="/admin" className="bg-orange-100 hover:bg-orange-200 text-orange-700 px-4 py-2 rounded-lg font-medium transition-colors text-sm">
+              <Link href="/manage-x9k4" className="bg-orange-100 hover:bg-orange-200 text-orange-700 px-4 py-2 rounded-lg font-medium transition-colors text-sm">
                 Admin
               </Link>
             )}
@@ -89,7 +89,7 @@ export default function Navbar() {
           <Link href="/deals?category=Spa & Wellness" className="block text-gray-700 font-medium py-2">Spa &amp; Wellness</Link>
           <div className="border-t border-gray-100 pt-3 space-y-2">
             {isAdmin && (
-              <Link href="/admin" className="block bg-orange-100 text-orange-700 px-4 py-2 rounded-lg font-medium text-center text-sm">Admin</Link>
+              <Link href="/manage-x9k4" className="block bg-orange-100 text-orange-700 px-4 py-2 rounded-lg font-medium text-center text-sm">Admin</Link>
             )}
             <Link href="/auth/login" className="block text-gray-700 font-medium py-2">Log in</Link>
             <Link href="/auth/signup" className="block bg-orange-500 text-white px-4 py-2 rounded-lg font-medium text-center">Sign up</Link>
