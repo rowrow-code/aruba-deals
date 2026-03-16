@@ -1,16 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import Link from 'next/link'
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { useSearchParams } from 'next/navigation'
 
-export default function LoginPage() {
+function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
+  const searchParams = useSearchParams()
+  const redirect = searchParams.get('redirect') || '/dashboard'
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -23,7 +26,7 @@ export default function LoginPage() {
       setAuthError(error.message)
       setLoading(false)
     } else {
-      window.location.href = '/dashboard'
+      window.location.href = redirect
     }
   }
 
@@ -110,5 +113,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }

@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Star, MapPin, Clock, CheckCircle, ArrowLeft, Share2, Heart, Users } from 'lucide-react'
 import { getDeal } from '@/lib/queries'
+import { supabase } from '@/lib/supabase'
 import { Deal } from '@/lib/types'
 
 export default function DealDetailPage() {
@@ -49,8 +50,13 @@ export default function DealDetailPage() {
   const daysLeft = Math.ceil((new Date(deal.expiration_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
   const spotsLeft = deal.total_available - deal.vouchers_sold
 
-  const handleClaimDeal = () => {
-    router.push(`/auth/signup?redirect=/deals/${deal.id}/voucher&deal=${deal.id}`)
+  const handleClaimDeal = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      router.push(`/deals/${deal.id}/voucher`)
+    } else {
+      router.push(`/auth/login?redirect=/deals/${deal.id}/voucher`)
+    }
   }
 
   return (
