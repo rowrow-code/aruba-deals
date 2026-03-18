@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Eye, EyeOff, ArrowLeft, CheckCircle } from 'lucide-react'
+import { Eye, EyeOff, ArrowLeft, CheckCircle, Mail } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 export default function SignupPage() {
@@ -12,6 +12,8 @@ export default function SignupPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
+  const [confirmed, setConfirmed] = useState(false)
+  const [resendStatus, setResendStatus] = useState<string | null>(null)
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -35,7 +37,18 @@ export default function SignupPage() {
       })
     }
 
-    window.location.href = '/dashboard'
+    if (data.session) {
+      window.location.href = '/dashboard'
+    } else {
+      setConfirmed(true)
+      setLoading(false)
+    }
+  }
+
+  const handleResend = async () => {
+    setResendStatus(null)
+    const { error } = await supabase.auth.resend({ type: 'signup', email })
+    setResendStatus(error ? 'Failed to resend. Try again.' : 'Sent! Check your inbox.')
   }
 
   return (
@@ -47,6 +60,31 @@ export default function SignupPage() {
         </Link>
 
         <div className="bg-white rounded-3xl shadow-xl p-8">
+          {confirmed ? (
+            <div className="text-center py-4">
+              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Mail className="w-8 h-8 text-orange-500" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Check your inbox</h2>
+              <p className="text-gray-500 text-sm mb-1">We sent a confirmation link to</p>
+              <p className="text-gray-800 font-semibold mb-6">{email}</p>
+              {resendStatus && (
+                <p className={`text-sm mb-4 ${resendStatus.startsWith('Sent') ? 'text-green-600' : 'text-red-600'}`}>
+                  {resendStatus}
+                </p>
+              )}
+              <button
+                onClick={handleResend}
+                className="w-full border border-orange-300 text-orange-600 hover:bg-orange-50 font-semibold py-3 rounded-xl transition-colors mb-3"
+              >
+                Resend email
+              </button>
+              <Link href="/auth/login" className="block text-center text-gray-500 text-sm hover:text-gray-700">
+                Back to login
+              </Link>
+            </div>
+          ) : (
+          <>
           <div className="text-center mb-8">
             <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-3">
               <span className="text-white font-bold">AS</span>
@@ -135,6 +173,8 @@ export default function SignupPage() {
               Log in
             </Link>
           </p>
+          </>
+          )}
         </div>
       </div>
     </div>

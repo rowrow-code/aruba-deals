@@ -12,6 +12,8 @@ function LoginForm() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
+  const [unconfirmed, setUnconfirmed] = useState(false)
+  const [resendStatus, setResendStatus] = useState<string | null>(null)
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') || '/dashboard'
 
@@ -19,15 +21,27 @@ function LoginForm() {
     e.preventDefault()
     setLoading(true)
     setAuthError(null)
+    setUnconfirmed(false)
+    setResendStatus(null)
 
     const { error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
-      setAuthError(error.message)
+      if (error.message.includes('Email not confirmed')) {
+        setUnconfirmed(true)
+      } else {
+        setAuthError(error.message)
+      }
       setLoading(false)
     } else {
       window.location.href = redirect
     }
+  }
+
+  const handleResend = async () => {
+    setResendStatus(null)
+    const { error } = await supabase.auth.resend({ type: 'signup', email })
+    setResendStatus(error ? 'Failed to resend. Try again.' : 'Sent! Check your inbox.')
   }
 
   return (
@@ -87,6 +101,26 @@ function LoginForm() {
                 Forgot password?
               </Link>
             </div>
+
+            {unconfirmed && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
+                <p className="font-semibold mb-1">Please confirm your email first.</p>
+                <p className="mb-2">Check your inbox for the confirmation link.</p>
+                {resendStatus ? (
+                  <p className={resendStatus.startsWith('Sent') ? 'text-green-700 font-medium' : 'text-red-600'}>
+                    {resendStatus}
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResend}
+                    className="text-amber-700 underline hover:text-amber-900 font-medium"
+                  >
+                    Resend confirmation email
+                  </button>
+                )}
+              </div>
+            )}
 
             {authError && (
               <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600">
