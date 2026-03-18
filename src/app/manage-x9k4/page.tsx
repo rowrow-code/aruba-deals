@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { CheckCircle, XCircle, Clock, Building2, Tag, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Business, Deal } from '@/lib/types'
 
-export default function AdminPage() {
+function AdminContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const focusId = searchParams.get('focus')
@@ -358,6 +358,14 @@ export default function AdminPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function AdminPage() {
+  return (
+    <Suspense>
+      <AdminContent />
+    </Suspense>
   )
 }
 

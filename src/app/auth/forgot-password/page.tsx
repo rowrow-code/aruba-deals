@@ -1,11 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Mail } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-export default function ForgotPasswordPage() {
+function ForgotPasswordContent() {
+  const searchParams = useSearchParams()
+  const expired = searchParams.get('expired') === '1'
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
@@ -44,6 +47,12 @@ export default function ForgotPasswordPage() {
             <h1 className="text-2xl font-bold text-gray-900">Forgot password?</h1>
             <p className="text-gray-500 mt-1">We&apos;ll send you a reset link</p>
           </div>
+
+          {expired && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-700 mb-4">
+              Your reset link has expired. Request a new one below.
+            </div>
+          )}
 
           {sent ? (
             <div className="text-center py-4">
@@ -90,5 +99,13 @@ export default function ForgotPasswordPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense>
+      <ForgotPasswordContent />
+    </Suspense>
   )
 }
