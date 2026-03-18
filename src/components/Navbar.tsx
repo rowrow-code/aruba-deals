@@ -4,22 +4,40 @@ import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { Menu, X, MapPin } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
+import type { User } from '@supabase/supabase-js'
 
 export default function Navbar() {
+  const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [user, setUser] = useState<User | null>(null)
 
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) return
+    const loadUser = async (u: User | null) => {
+      setUser(u)
+      if (!u) { setIsAdmin(false); return }
       const { data } = await supabase
         .from('profiles')
         .select('role')
-        .eq('id', user.id)
+        .eq('id', u.id)
         .single()
       if (data?.role === 'admin') setIsAdmin(true)
+    }
+
+    supabase.auth.getUser().then(({ data: { user } }) => loadUser(user))
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      loadUser(session?.user ?? null)
     })
+
+    return () => subscription.unsubscribe()
   }, [])
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    router.push('/')
+  }
 
   return (
     <nav className="bg-white shadow-sm sticky top-0 z-50">
@@ -59,12 +77,28 @@ export default function Navbar() {
                 Admin
               </Link>
             )}
-            <Link href="/auth/login" className="text-gray-700 hover:text-orange-500 font-medium transition-colors">
-              Log in
-            </Link>
-            <Link href="/auth/signup" className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium transition-colors">
-              Sign up
-            </Link>
+            {user ? (
+              <>
+                <Link href="/dashboard" className="text-gray-700 hover:text-orange-500 font-medium transition-colors">
+                  My Vouchers
+                </Link>
+                <button
+                  onClick={handleSignOut}
+                  className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                >
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href="/auth/login" className="text-gray-700 hover:text-orange-500 font-medium transition-colors">
+                  Log in
+                </Link>
+                <Link href="/auth/signup" className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                  Sign up
+                </Link>
+              </>
+            )}
             <Link href="/business/dashboard" className="border border-gray-200 hover:border-orange-500 text-gray-700 hover:text-orange-500 px-4 py-2 rounded-lg font-medium transition-colors text-sm">
               For Business
             </Link>
@@ -91,8 +125,22 @@ export default function Navbar() {
             {isAdmin && (
               <Link href="/manage-x9k4" className="block bg-orange-100 text-orange-700 px-4 py-2 rounded-lg font-medium text-center text-sm">Admin</Link>
             )}
-            <Link href="/auth/login" className="block text-gray-700 font-medium py-2">Log in</Link>
-            <Link href="/auth/signup" className="block bg-orange-500 text-white px-4 py-2 rounded-lg font-medium text-center">Sign up</Link>
+            {user ? (
+              <>
+                <Link href="/dashboard" className="block text-gray-700 font-medium py-2">My Vouchers</Link>
+                <button
+                  onClick={handleSignOut}
+                  className="block w-full bg-orange-500 text-white px-4 py-2 rounded-lg font-medium text-center"
+                >
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href="/auth/login" className="block text-gray-700 font-medium py-2">Log in</Link>
+                <Link href="/auth/signup" className="block bg-orange-500 text-white px-4 py-2 rounded-lg font-medium text-center">Sign up</Link>
+              </>
+            )}
             <Link href="/business/dashboard" className="block border border-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium text-center text-sm">For Business</Link>
           </div>
         </div>

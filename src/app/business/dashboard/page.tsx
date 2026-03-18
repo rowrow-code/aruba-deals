@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Plus, TrendingUp, Eye, CheckCircle, Tag } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { getMyBusiness, getBusinessDeals, createDeal } from '@/lib/queries'
@@ -19,6 +20,7 @@ export default function BusinessDashboardPage() {
     original_price: '',
     deal_price: '',
     expiration_date: '',
+    image_url: '',
     included: '',
   })
   const [submitted, setSubmitted] = useState(false)
@@ -70,11 +72,12 @@ export default function BusinessDashboardPage() {
         expiration_date: new Date(formData.expiration_date).toISOString(),
         included: formData.included.split('\n').map((s) => s.trim()).filter(Boolean),
         location: business.location,
+        images: formData.image_url ? [formData.image_url] : [],
       })
 
       setDeals((prev) => [newDeal, ...prev])
       setSubmitted(true)
-      setFormData({ title: '', description: '', original_price: '', deal_price: '', expiration_date: '', included: '' })
+      setFormData({ title: '', description: '', original_price: '', deal_price: '', expiration_date: '', image_url: '', included: '' })
 
       setTimeout(() => {
         setSubmitted(false)
@@ -156,13 +159,21 @@ export default function BusinessDashboardPage() {
                 {business.category}
               </span>
             </div>
-            <button
-              onClick={() => setActiveTab('create')}
-              className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm"
-            >
-              <Plus className="w-4 h-4" />
-              New Deal
-            </button>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/business/redeem"
+                className="flex items-center gap-2 border border-gray-200 hover:border-orange-500 text-gray-700 hover:text-orange-500 font-semibold px-4 py-2.5 rounded-xl transition-colors"
+              >
+                Redeem Voucher
+              </Link>
+              <button
+                onClick={() => setActiveTab('create')}
+                className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                New Deal
+              </button>
+            </div>
           </div>
 
           {/* Tabs */}
@@ -367,6 +378,17 @@ export default function BusinessDashboardPage() {
                       onChange={(e) => setFormData({ ...formData, expiration_date: e.target.value })}
                       required
                       min={new Date().toISOString().split('T')[0]}
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Image URL</label>
+                    <input
+                      type="url"
+                      value={formData.image_url}
+                      onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                      placeholder="https://example.com/image.jpg"
                       className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     />
                   </div>

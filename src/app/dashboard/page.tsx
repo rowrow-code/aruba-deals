@@ -7,6 +7,7 @@ import { QrCode, Calendar, CheckCircle, Clock, ArrowRight, Tag, User } from 'luc
 import { supabase } from '@/lib/supabase'
 import { getMyVouchers } from '@/lib/queries'
 import { Voucher } from '@/lib/types'
+import QRCodeImage from '@/components/QRCodeImage'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -155,9 +156,7 @@ export default function DashboardPage() {
                       <div className="text-center">
                         <p className="text-sm text-gray-600 mb-4">Show this QR code at <strong>{deal.business?.name}</strong></p>
                         <div className="inline-block bg-white p-4 rounded-2xl shadow-sm mb-4">
-                          <div className="w-40 h-40 bg-gray-900 rounded-xl flex items-center justify-center mx-auto">
-                            <QrCode className="w-24 h-24 text-white" />
-                          </div>
+                          <QRCodeImage value={voucher.qr_code} size={160} />
                           <p className="text-center text-sm font-mono font-bold text-gray-900 mt-3 tracking-widest">
                             {voucher.qr_code}
                           </p>

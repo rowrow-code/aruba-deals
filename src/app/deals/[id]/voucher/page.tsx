@@ -7,6 +7,7 @@ import { CheckCircle, ArrowLeft, MapPin, Clock } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { getDeal, createVoucher } from '@/lib/queries'
 import { Deal, Voucher } from '@/lib/types'
+import QRCodeImage from '@/components/QRCodeImage'
 
 export default function VoucherPage() {
   const params = useParams()
@@ -106,21 +107,7 @@ export default function VoucherPage() {
           {/* QR Code */}
           <div className="p-8 text-center border-b border-dashed border-gray-200">
             <div className="inline-block bg-white p-4 rounded-2xl shadow-inner border border-gray-100">
-              {/* QR code visual representation */}
-              <div className="w-48 h-48 bg-gray-900 rounded-xl flex items-center justify-center mx-auto relative overflow-hidden">
-                <div className="grid grid-cols-8 gap-0.5 p-3 w-full h-full">
-                  {Array.from({ length: 64 }).map((_, i) => {
-                    const seed = voucher.qr_code.charCodeAt(i % voucher.qr_code.length)
-                    const filled = (seed + i * 7) % 3 !== 0
-                    return (
-                      <div
-                        key={i}
-                        className={`aspect-square rounded-sm ${filled ? 'bg-white' : 'bg-gray-900'}`}
-                      />
-                    )
-                  })}
-                </div>
-              </div>
+              <QRCodeImage value={voucher.qr_code} size={192} />
             </div>
             <div className="mt-4">
               <p className="text-2xl font-bold text-gray-900 tracking-widest font-mono">{voucher.qr_code}</p>
