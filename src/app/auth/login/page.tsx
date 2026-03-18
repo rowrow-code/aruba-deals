@@ -16,6 +16,7 @@ function LoginForm() {
   const [resendStatus, setResendStatus] = useState<string | null>(null)
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') || '/dashboard'
+  const justConfirmed = searchParams.get('confirmed') === '1'
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -61,6 +62,12 @@ function LoginForm() {
             <h1 className="text-2xl font-bold text-gray-900">Welcome back!</h1>
             <p className="text-gray-500 mt-1">Log in to access your deals</p>
           </div>
+
+          {justConfirmed && (
+            <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm text-green-700 mb-4">
+              Email confirmed! You can now log in.
+            </div>
+          )}
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>

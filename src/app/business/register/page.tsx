@@ -21,6 +21,7 @@ export default function BusinessRegisterPage() {
   })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [needsConfirmation, setNeedsConfirmation] = useState(false)
 
   const handleNext = (e: React.FormEvent) => {
     e.preventDefault()
@@ -33,19 +34,58 @@ export default function BusinessRegisterPage() {
     setError(null)
 
     try {
-      // Create the user account
+      // Try to create the user account
+      let userId: string | undefined
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
           data: { full_name: formData.contactName, role: 'business' },
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=/business/dashboard`,
         },
       })
 
-      if (authError) throw authError
+      if (authError) {
+        // If email already registered, try signing in instead
+        if (authError.message.toLowerCase().includes('already registered') || authError.message.toLowerCase().includes('already been registered')) {
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: formData.email,
+            password: formData.password,
+          })
+          if (signInError) {
+            throw new Error('An account with this email already exists. Check your password and try again.')
+          }
+          userId = signInData.user?.id
 
-      const userId = authData.user?.id
+          // Check if they already have a business
+          if (userId) {
+            const { data: existingBiz } = await supabase
+              .from('businesses')
+              .select('id')
+              .eq('owner_id', userId)
+              .maybeSingle()
+            if (existingBiz) {
+              throw new Error('You already have a business registered. Visit your dashboard to manage it.')
+            }
+            // Update their role to business
+            await supabase.from('profiles').update({ role: 'business' }).eq('id', userId)
+          }
+        } else {
+          throw authError
+        }
+      } else {
+        userId = authData.user?.id
+      }
+
       if (!userId) throw new Error('Failed to create account')
+
+      // Create/update profile
+      await supabase.from('profiles').upsert({
+        id: userId,
+        email: formData.email,
+        full_name: formData.contactName,
+        role: 'business',
+      })
 
       // Insert the business as pending
       const { error: bizError } = await supabase.from('businesses').insert({
@@ -61,6 +101,11 @@ export default function BusinessRegisterPage() {
       })
 
       if (bizError) throw bizError
+
+      // Check if email confirmation is needed
+      if (!authData?.session && authData?.user) {
+        setNeedsConfirmation(true)
+      }
 
       // Send email notification to admin
       await fetch('/api/notify-admin', {
@@ -261,10 +306,23 @@ export default function BusinessRegisterPage() {
                 <CheckCircle className="w-10 h-10 text-green-500" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-3">Application Submitted!</h2>
-              <p className="text-gray-500 mb-6 leading-relaxed">
+              <p className="text-gray-500 mb-4 leading-relaxed">
                 Thank you for registering <strong>{formData.businessName}</strong>. We&apos;ll review your application and get back to you within 24 hours.
               </p>
-              <Link href="/" className="block bg-orange-500 hover:bg-orange-600 text-white font-bold py-3.5 rounded-xl transition-colors shadow-lg shadow-orange-200 text-center">
+              {needsConfirmation ? (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800 mb-6 text-left">
+                  <p className="font-semibold mb-1">One more step: confirm your email</p>
+                  <p>We sent a confirmation link to <strong>{formData.email}</strong>. Click it to activate your account, then log in to check your application status.</p>
+                </div>
+              ) : (
+                <Link
+                  href="/business/dashboard"
+                  className="block bg-orange-500 hover:bg-orange-600 text-white font-bold py-3.5 rounded-xl transition-colors shadow-lg shadow-orange-200 text-center mb-3"
+                >
+                  Go to Dashboard
+                </Link>
+              )}
+              <Link href="/" className="block text-gray-500 hover:text-gray-700 text-sm text-center">
                 Back to Home
               </Link>
             </div>

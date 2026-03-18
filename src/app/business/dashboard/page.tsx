@@ -14,6 +14,7 @@ export default function BusinessDashboardPage() {
   const [business, setBusiness] = useState<Business | null>(null)
   const [deals, setDeals] = useState<Deal[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -42,7 +43,8 @@ export default function BusinessDashboardPage() {
           setDeals(bizDeals)
         }
       } catch (err) {
-        console.error(err)
+        console.error('Dashboard load error:', err)
+        setLoadError(err instanceof Error ? err.message : 'Failed to load business data')
       } finally {
         setLoading(false)
       }
@@ -94,6 +96,22 @@ export default function BusinessDashboardPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-sm mx-auto px-4">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Something went wrong</h2>
+          <p className="text-gray-500 mb-2">{loadError}</p>
+          <p className="text-xs text-gray-400 mb-6">Try signing out and back in, then visit this page again.</p>
+          <a href="/business/dashboard" className="inline-block bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl transition-colors">
+            Retry
+          </a>
+        </div>
       </div>
     )
   }
