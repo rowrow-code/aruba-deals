@@ -42,6 +42,16 @@ export interface Voucher {
   deal?: Deal
 }
 
+export interface Review {
+  id: string
+  deal_id: string
+  user_id: string
+  user_name: string
+  rating: number
+  comment: string | null
+  created_at: string
+}
+
 export interface Profile {
   id: string
   email: string

@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { Deal, Business, Voucher } from './types'
+import { Deal, Business, Voucher, Review } from './types'
 
 export async function getDeals(category?: string): Promise<Deal[]> {
   const { data, error } = await supabase
@@ -87,6 +87,32 @@ export async function createDeal(dealData: {
 
   if (error) throw error
   return data as Deal
+}
+
+export async function getDealReviews(dealId: string): Promise<Review[]> {
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('*')
+    .eq('deal_id', dealId)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data as Review[]) || []
+}
+
+export async function submitReview(review: {
+  deal_id: string
+  user_id: string
+  user_name: string
+  rating: number
+  comment: string
+}): Promise<Review> {
+  const { data, error } = await supabase
+    .from('reviews')
+    .upsert(review, { onConflict: 'deal_id,user_id' })
+    .select()
+    .single()
+  if (error) throw error
+  return data as Review
 }
 
 export async function createVoucher(dealId: string, userId: string): Promise<Voucher> {

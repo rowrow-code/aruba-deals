@@ -1,9 +1,55 @@
+import { createHmac } from 'crypto'
 import { Resend } from 'resend'
 import { NextResponse } from 'next/server'
 
+function generateToken(secret: string, businessId: string, action: string): string {
+  return createHmac('sha256', secret)
+    .update(businessId + action)
+    .digest('hex')
+}
+
 export async function POST(request: Request) {
   const resend = new Resend(process.env.RESEND_API_KEY)
-  const { businessName, category, location, contactName, contactEmail, phone } = await request.json()
+  const { businessId, businessName, category, location, contactName, contactEmail, phone } = await request.json()
+
+  const secret = process.env.ADMIN_ACTION_SECRET
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://aruba-deals.vercel.app'
+
+  let actionButtons = ''
+  if (secret && businessId) {
+    const approveToken = generateToken(secret, businessId, 'approve')
+    const rejectToken = generateToken(secret, businessId, 'reject')
+    const approveUrl = `${siteUrl}/api/admin-action?id=${businessId}&action=approve&token=${approveToken}`
+    const rejectUrl = `${siteUrl}/api/admin-action?id=${businessId}&action=reject&token=${rejectToken}`
+    const dashboardUrl = `${siteUrl}/manage-x9k4?focus=${businessId}`
+
+    actionButtons = `
+      <div style="margin-top: 28px; text-align: center;">
+        <p style="color: #6b7280; font-size: 13px; margin-bottom: 16px;">Take action directly from this email:</p>
+        <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+          <a href="${approveUrl}" style="display: inline-block; background: #16a34a; color: white; font-weight: 700; padding: 14px 36px; border-radius: 10px; text-decoration: none; font-size: 16px;">
+            ✅ Approve
+          </a>
+          <a href="${rejectUrl}" style="display: inline-block; background: #dc2626; color: white; font-weight: 700; padding: 14px 36px; border-radius: 10px; text-decoration: none; font-size: 16px;">
+            🚫 Reject
+          </a>
+        </div>
+        <div style="margin-top: 16px;">
+          <a href="${dashboardUrl}" style="display: inline-block; background: #f97316; color: white; font-weight: 700; padding: 12px 32px; border-radius: 10px; text-decoration: none; font-size: 14px;">
+            Review in Admin Dashboard
+          </a>
+        </div>
+      </div>
+    `
+  } else {
+    actionButtons = `
+      <div style="margin-top: 24px; text-align: center;">
+        <a href="${siteUrl}/manage-x9k4" style="display: inline-block; background: #f97316; color: white; font-weight: 700; padding: 12px 32px; border-radius: 10px; text-decoration: none;">
+          Review in Admin Dashboard
+        </a>
+      </div>
+    `
+  }
 
   try {
     await resend.emails.send({
@@ -25,11 +71,7 @@ export async function POST(request: Request) {
               <tr><td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Contact Email</td><td style="padding: 8px 0; font-weight: 600; color: #111827;">${contactEmail}</td></tr>
               <tr><td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Phone</td><td style="padding: 8px 0; font-weight: 600; color: #111827;">${phone || '—'}</td></tr>
             </table>
-            <div style="margin-top: 24px; text-align: center;">
-              <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://aruba-deals.vercel.app'}/manage-x9k4" style="display: inline-block; background: #f97316; color: white; font-weight: 700; padding: 12px 32px; border-radius: 10px; text-decoration: none;">
-                Review in Admin Dashboard
-              </a>
-            </div>
+            ${actionButtons}
           </div>
         </div>
       `,

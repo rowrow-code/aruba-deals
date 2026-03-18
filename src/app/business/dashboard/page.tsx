@@ -1,13 +1,126 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, TrendingUp, Eye, CheckCircle, Tag } from 'lucide-react'
+import { Plus, TrendingUp, Eye, CheckCircle, Tag, Trash2, Upload, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { getMyBusiness, getBusinessDeals, createDeal } from '@/lib/queries'
 import { Business, Deal } from '@/lib/types'
 
+// ── Image uploader ──────────────────────────────────────────────────────────
+function ImageUploader({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+  const [dragging, setDragging] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const upload = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      setError('Only image files are supported.')
+      return
+    }
+    setUploading(true)
+    setError(null)
+    try {
+      const ext = file.name.split('.').pop() || 'jpg'
+      const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+      const { error: uploadError } = await supabase.storage
+        .from('deal-images')
+        .upload(filename, file, { contentType: file.type })
+      if (uploadError) throw uploadError
+      const { data } = supabase.storage.from('deal-images').getPublicUrl(filename)
+      onChange(data.publicUrl)
+    } catch (err) {
+      setError('Upload failed. Try pasting an image URL instead.')
+      console.error(err)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setDragging(false)
+    const file = e.dataTransfer.files[0]
+    if (file) upload(file)
+  }, [])
+
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const file = e.clipboardData.files[0]
+    if (file) {
+      upload(file)
+      return
+    }
+    // If pasting a URL string
+    const text = e.clipboardData.getData('text')
+    if (text.startsWith('http')) onChange(text)
+  }, [])
+
+  return (
+    <div>
+      {value ? (
+        <div className="relative">
+          <img src={value} alt="Deal preview" className="w-full h-48 object-cover rounded-xl border border-gray-200" />
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            className="absolute top-2 right-2 bg-white rounded-full p-1.5 shadow-md hover:bg-red-50 transition-colors"
+          >
+            <X className="w-4 h-4 text-gray-600" />
+          </button>
+        </div>
+      ) : (
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={handleDrop}
+          onPaste={handlePaste}
+          onClick={() => inputRef.current?.click()}
+          tabIndex={0}
+          onKeyDown={(e) => e.key === 'Enter' && inputRef.current?.click()}
+          className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors outline-none focus:ring-2 focus:ring-orange-500 ${
+            dragging ? 'border-orange-400 bg-orange-50' : 'border-gray-200 hover:border-orange-300 hover:bg-orange-50/40'
+          }`}
+        >
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
+          />
+          {uploading ? (
+            <div className="flex flex-col items-center gap-2">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500" />
+              <p className="text-sm text-gray-500">Uploading...</p>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-12 h-12 bg-orange-50 rounded-full flex items-center justify-center">
+                <Upload className="w-6 h-6 text-orange-400" />
+              </div>
+              <p className="text-sm font-medium text-gray-700">Drop image here or click to browse</p>
+              <p className="text-xs text-gray-400">You can also paste an image or a URL (Ctrl+V)</p>
+            </div>
+          )}
+        </div>
+      )}
+      {error && <p className="text-xs text-red-500 mt-1.5">{error}</p>}
+      {/* URL fallback */}
+      {!value && (
+        <input
+          type="url"
+          placeholder="Or paste an image URL..."
+          onChange={(e) => e.target.value && onChange(e.target.value)}
+          className="mt-2 w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+        />
+      )}
+    </div>
+  )
+}
+
+// ── Main page ───────────────────────────────────────────────────────────────
 export default function BusinessDashboardPage() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'overview' | 'deals' | 'create'>('overview')
@@ -27,6 +140,8 @@ export default function BusinessDashboardPage() {
   const [submitted, setSubmitted] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -90,6 +205,16 @@ export default function BusinessDashboardPage() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const handleDeleteDeal = async (dealId: string) => {
+    setDeletingId(dealId)
+    const { error } = await supabase.from('deals').delete().eq('id', dealId)
+    if (!error) {
+      setDeals((prev) => prev.filter((d) => d.id !== dealId))
+    }
+    setConfirmDeleteId(null)
+    setDeletingId(null)
   }
 
   if (loading) {
@@ -287,28 +412,64 @@ export default function BusinessDashboardPage() {
             ) : (
               deals.map((deal) => {
                 const discount = Math.round(((deal.original_price - deal.deal_price) / deal.original_price) * 100)
+                const isConfirming = confirmDeleteId === deal.id
                 return (
-                  <div key={deal.id} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex items-center gap-4">
-                    {deal.images?.[0] && (
-                      <img src={deal.images[0]} alt={deal.title} className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />
+                  <div key={deal.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div className="p-5 flex items-center gap-4">
+                      {deal.images?.[0] && (
+                        <img src={deal.images[0]} alt={deal.title} className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-bold text-gray-900">{deal.title}</h3>
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${deal.is_active ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
+                            {deal.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-gray-500">
+                          <span>${deal.deal_price} (save {discount}%)</span>
+                          <span>{deal.vouchers_sold} sold</span>
+                          <span>{deal.total_available - deal.vouchers_sold} remaining</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <div className="text-right">
+                          <div className="text-lg font-bold text-gray-900">${(deal.deal_price * deal.vouchers_sold).toFixed(0)}</div>
+                          <div className="text-xs text-gray-500">revenue</div>
+                        </div>
+                        {!isConfirming && (
+                          <button
+                            onClick={() => setConfirmDeleteId(deal.id)}
+                            className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-500 font-semibold px-3 py-2 rounded-xl text-sm transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Inline confirmation */}
+                    {isConfirming && (
+                      <div className="border-t border-red-100 bg-red-50 px-5 py-4 flex items-center justify-between gap-4">
+                        <p className="text-sm text-red-700 font-medium">Remove <strong>{deal.title}</strong>? This cannot be undone.</p>
+                        <div className="flex gap-2 flex-shrink-0">
+                          <button
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="px-4 py-2 rounded-xl text-sm font-semibold bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => handleDeleteDeal(deal.id)}
+                            disabled={deletingId === deal.id}
+                            className="px-4 py-2 rounded-xl text-sm font-semibold bg-red-500 hover:bg-red-600 disabled:opacity-60 text-white transition-colors"
+                          >
+                            {deletingId === deal.id ? 'Removing...' : 'Yes, Remove'}
+                          </button>
+                        </div>
+                      </div>
                     )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-bold text-gray-900">{deal.title}</h3>
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${deal.is_active ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
-                          {deal.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
-                        <span>${deal.deal_price} (save {discount}%)</span>
-                        <span>{deal.vouchers_sold} sold</span>
-                        <span>{deal.total_available - deal.vouchers_sold} remaining</span>
-                      </div>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <div className="text-lg font-bold text-gray-900">${(deal.deal_price * deal.vouchers_sold).toFixed(0)}</div>
-                      <div className="text-xs text-gray-500">revenue</div>
-                    </div>
                   </div>
                 )
               })
@@ -401,13 +562,10 @@ export default function BusinessDashboardPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Image URL</label>
-                    <input
-                      type="url"
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Deal Image</label>
+                    <ImageUploader
                       value={formData.image_url}
-                      onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                      placeholder="https://example.com/image.jpg"
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      onChange={(url) => setFormData({ ...formData, image_url: url })}
                     />
                   </div>
 

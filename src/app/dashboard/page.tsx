@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { QrCode, Calendar, CheckCircle, Clock, ArrowRight, Tag, User } from 'lucide-react'
+import { QrCode, Calendar, CheckCircle, Clock, ArrowRight, Tag, User, Trash2, Star } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { getMyVouchers } from '@/lib/queries'
 import { Voucher } from '@/lib/types'
@@ -16,6 +16,8 @@ export default function DashboardPage() {
   const [userEmail, setUserEmail] = useState('')
   const [userName, setUserName] = useState('')
   const [loading, setLoading] = useState(true)
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null)
+  const [removingId, setRemovingId] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -44,6 +46,34 @@ export default function DashboardPage() {
       }
     })
   }, [router])
+
+  const handleRemoveVoucher = async (voucherId: string, dealId: string) => {
+    setRemovingId(voucherId)
+
+    // Delete the voucher
+    const { error } = await supabase.from('vouchers').delete().eq('id', voucherId)
+
+    if (!error) {
+      // Decrement vouchers_sold so the spot opens back up
+      const { data: dealData } = await supabase
+        .from('deals')
+        .select('vouchers_sold')
+        .eq('id', dealId)
+        .single()
+
+      if (dealData && dealData.vouchers_sold > 0) {
+        await supabase
+          .from('deals')
+          .update({ vouchers_sold: dealData.vouchers_sold - 1 })
+          .eq('id', dealId)
+      }
+
+      setVouchers((prev) => prev.filter((v) => v.id !== voucherId))
+    }
+
+    setConfirmRemoveId(null)
+    setRemovingId(null)
+  }
 
   if (loading) {
     return (
@@ -115,12 +145,13 @@ export default function DashboardPage() {
               if (!deal) return null
               const daysLeft = Math.ceil((new Date(deal.expiration_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
               const isExpanded = activeVoucher === voucher.id
+              const isConfirming = confirmRemoveId === voucher.id
 
               return (
                 <div key={voucher.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
                   <div
                     className="flex items-center gap-4 p-5 cursor-pointer"
-                    onClick={() => setActiveVoucher(isExpanded ? null : voucher.id)}
+                    onClick={() => !isConfirming && setActiveVoucher(isExpanded ? null : voucher.id)}
                   >
                     {deal.images?.[0] && (
                       <img
@@ -143,15 +174,47 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button className="bg-orange-50 text-orange-600 p-2 rounded-xl hover:bg-orange-100 transition-colors">
+                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <button className="bg-orange-50 text-orange-600 p-2 rounded-xl hover:bg-orange-100 transition-colors"
+                        onClick={() => setActiveVoucher(isExpanded ? null : voucher.id)}>
                         <QrCode className="w-5 h-5" />
                       </button>
+                      {!isConfirming && (
+                        <button
+                          onClick={() => setConfirmRemoveId(voucher.id)}
+                          className="bg-red-50 text-red-400 p-2 rounded-xl hover:bg-red-100 transition-colors"
+                          title="Remove voucher"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      )}
                     </div>
                   </div>
 
+                  {/* Inline remove confirmation */}
+                  {isConfirming && (
+                    <div className="border-t border-red-100 bg-red-50 px-5 py-4 flex items-center justify-between gap-4">
+                      <p className="text-sm text-red-700 font-medium">Remove this voucher? The spot will go back to the deal.</p>
+                      <div className="flex gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => setConfirmRemoveId(null)}
+                          className="px-4 py-2 rounded-xl text-sm font-semibold bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => handleRemoveVoucher(voucher.id, deal.id)}
+                          disabled={removingId === voucher.id}
+                          className="px-4 py-2 rounded-xl text-sm font-semibold bg-red-500 hover:bg-red-600 disabled:opacity-60 text-white transition-colors"
+                        >
+                          {removingId === voucher.id ? 'Removing...' : 'Yes, Remove'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Expanded QR View */}
-                  {isExpanded && (
+                  {isExpanded && !isConfirming && (
                     <div className="border-t border-gray-100 p-6 bg-orange-50">
                       <div className="text-center">
                         <p className="text-sm text-gray-600 mb-4">Show this QR code at <strong>{deal.business?.name}</strong></p>
@@ -185,13 +248,13 @@ export default function DashboardPage() {
                 const deal = voucher.deal
                 if (!deal) return null
                 return (
-                  <div key={voucher.id} className="bg-white rounded-2xl border border-gray-100 p-5 opacity-60">
+                  <div key={voucher.id} className="bg-white rounded-2xl border border-gray-100 p-5">
                     <div className="flex items-center gap-4">
                       {deal.images?.[0] && (
                         <img
                           src={deal.images[0]}
                           alt={deal.title}
-                          className="w-16 h-16 rounded-xl object-cover flex-shrink-0 grayscale"
+                          className="w-16 h-16 rounded-xl object-cover flex-shrink-0 grayscale opacity-70"
                         />
                       )}
                       <div className="flex-1">
@@ -199,9 +262,16 @@ export default function DashboardPage() {
                         <h3 className="font-bold text-gray-700">{deal.title}</h3>
                         <div className="flex items-center gap-1 mt-1 text-xs text-green-600 font-medium">
                           <CheckCircle className="w-3.5 h-3.5" />
-                          Redeemed
+                          Used
                         </div>
                       </div>
+                      <Link
+                        href={`/deals/${deal.id}#reviews`}
+                        className="flex items-center gap-1.5 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 font-semibold px-3 py-2 rounded-xl text-sm transition-colors flex-shrink-0"
+                      >
+                        <Star className="w-4 h-4" />
+                        Review
+                      </Link>
                     </div>
                   </div>
                 )

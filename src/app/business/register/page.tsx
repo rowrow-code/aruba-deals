@@ -22,6 +22,7 @@ export default function BusinessRegisterPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [needsConfirmation, setNeedsConfirmation] = useState(false)
+  const [emailWarning, setEmailWarning] = useState(false)
 
   const handleNext = (e: React.FormEvent) => {
     e.preventDefault()
@@ -88,7 +89,7 @@ export default function BusinessRegisterPage() {
       })
 
       // Insert the business as pending
-      const { error: bizError } = await supabase.from('businesses').insert({
+      const { data: bizData, error: bizError } = await supabase.from('businesses').insert({
         name: formData.businessName,
         category: formData.category,
         location: formData.location,
@@ -98,7 +99,7 @@ export default function BusinessRegisterPage() {
         phone: formData.phone,
         owner_id: userId,
         status: 'pending',
-      })
+      }).select('id').single()
 
       if (bizError) throw bizError
 
@@ -108,10 +109,11 @@ export default function BusinessRegisterPage() {
       }
 
       // Send email notification to admin
-      await fetch('/api/notify-admin', {
+      const adminRes = await fetch('/api/notify-admin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          businessId: bizData?.id,
           businessName: formData.businessName,
           category: formData.category,
           location: formData.location,
@@ -120,6 +122,10 @@ export default function BusinessRegisterPage() {
           phone: formData.phone,
         }),
       })
+
+      if (!adminRes.ok) {
+        setEmailWarning(true)
+      }
 
       setStep(4)
     } catch (err: unknown) {
@@ -321,6 +327,12 @@ export default function BusinessRegisterPage() {
                 >
                   Go to Dashboard
                 </Link>
+              )}
+              {emailWarning && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800 mb-3 text-left">
+                  <p className="font-semibold mb-1">Admin notification may have failed</p>
+                  <p>Your application was saved, but the admin email may not have sent. Please contact <a href="mailto:storeroro07@gmail.com" className="underline">storeroro07@gmail.com</a> to let us know.</p>
+                </div>
               )}
               <Link href="/" className="block text-gray-500 hover:text-gray-700 text-sm text-center">
                 Back to Home
