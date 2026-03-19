@@ -25,15 +25,18 @@ function ImageUploader({ value, onChange }: { value: string; onChange: (url: str
     setUploading(true)
     setError(null)
     try {
+      const { supabase } = await import('@/lib/supabase')
+      const { data: { session } } = await supabase.auth.getSession()
       const fd = new FormData()
       fd.append('file', file)
-      const res = await fetch('/api/upload-image', { method: 'POST', body: fd })
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'Upload failed')
-      }
-      const { url } = await res.json()
-      onChange(url)
+      const res = await fetch('/api/upload-image', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${session?.access_token ?? ''}` },
+        body: fd,
+      })
+      const json = await res.json().catch(() => ({ error: 'Upload failed' }))
+      if (!res.ok) throw new Error(json.error || 'Upload failed')
+      onChange(json.url)
       setError(null)
     } catch (err: any) {
       console.error('Upload error:', err)
@@ -298,8 +301,10 @@ export default function BusinessDashboardPage() {
         body: JSON.stringify({ dealId }),
       })
       if (!res.ok) {
-        const err = await res.json()
-        alert(`Delete failed: ${err.error || 'Unknown error'}`)
+        const text = await res.text()
+        let err: any = {}
+        try { err = JSON.parse(text) } catch {}
+        alert(`Delete failed: ${err.error || text || 'Unknown error'}`)
       } else {
         setDeals((prev) => prev.filter((d) => d.id !== dealId))
       }

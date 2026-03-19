@@ -49,28 +49,25 @@ export default function DashboardPage() {
 
   const handleRemoveVoucher = async (voucherId: string, dealId: string) => {
     setRemovingId(voucherId)
-
-    // Delete the voucher
-    const { error } = await supabase.from('vouchers').delete().eq('id', voucherId)
-
-    if (!error) {
-      // Decrement vouchers_sold so the spot opens back up
-      const { data: dealData } = await supabase
-        .from('deals')
-        .select('vouchers_sold')
-        .eq('id', dealId)
-        .single()
-
-      if (dealData && dealData.vouchers_sold > 0) {
-        await supabase
-          .from('deals')
-          .update({ vouchers_sold: dealData.vouchers_sold - 1 })
-          .eq('id', dealId)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/delete-voucher', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token ?? ''}`,
+        },
+        body: JSON.stringify({ voucherId, dealId }),
+      })
+      if (res.ok) {
+        setVouchers((prev) => prev.filter((v) => v.id !== voucherId))
+      } else {
+        const data = await res.json().catch(() => ({}))
+        alert(`Could not remove voucher: ${data.error || 'Unknown error'}`)
       }
-
-      setVouchers((prev) => prev.filter((v) => v.id !== voucherId))
+    } catch {
+      alert('Could not remove voucher: network error')
     }
-
     setConfirmRemoveId(null)
     setRemovingId(null)
   }
@@ -83,7 +80,10 @@ export default function DashboardPage() {
     )
   }
 
-  const activeVouchers = vouchers.filter((v) => v.status === 'active')
+  const now = Date.now()
+  const activeVouchers = vouchers.filter(
+    (v) => v.status === 'active' && new Date(v.deal?.expiration_date ?? '9999').getTime() > now
+  )
   const usedVouchers = vouchers.filter((v) => v.status === 'used')
   const totalSaved = vouchers.reduce(
     (sum, v) => sum + ((v.deal?.original_price ?? 0) - (v.deal?.deal_price ?? 0)),

@@ -195,15 +195,17 @@ function AdminContent() {
     setDeletingBusinessId(businessId)
     try {
       const res = await adminFetch({ businessId })
+      const text = await res.text()
+      let data: any = {}
+      try { data = JSON.parse(text) } catch {}
       if (res.ok) {
         setBusinesses((prev) => prev.filter((b) => b.id !== businessId))
         setAllDeals((prev) => prev.filter((d) => d.business_id !== businessId))
       } else {
-        const err = await res.json()
-        alert(`Delete failed: ${err.error || 'Unknown error'}`)
+        alert(`Delete failed: ${data.error || text || 'Unknown error'}`)
       }
-    } catch {
-      alert('Delete failed: network error')
+    } catch (e: any) {
+      alert(`Delete failed: ${e?.message || 'network error'}`)
     }
     setConfirmDeleteBusinessId(null)
     setDeletingBusinessId(null)
@@ -213,14 +215,16 @@ function AdminContent() {
     setDeletingDealId(dealId)
     try {
       const res = await adminFetch({ dealId })
+      const text = await res.text()
+      let data: any = {}
+      try { data = JSON.parse(text) } catch {}
       if (res.ok) {
         setAllDeals((prev) => prev.filter((d) => d.id !== dealId))
       } else {
-        const err = await res.json()
-        alert(`Delete failed: ${err.error || 'Unknown error'}`)
+        alert(`Delete failed: ${data.error || text || 'Unknown error'}`)
       }
-    } catch {
-      alert('Delete failed: network error')
+    } catch (e: any) {
+      alert(`Delete failed: ${e?.message || 'network error'}`)
     }
     setConfirmDeleteDealId(null)
     setDeletingDealId(null)
