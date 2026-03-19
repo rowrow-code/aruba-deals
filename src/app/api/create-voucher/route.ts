@@ -58,15 +58,28 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Check deal exists and has spots
-    const { data: deal } = await admin
+    // Check deal exists and has spots (select only guaranteed columns)
+    const { data: deal, error: dealError } = await admin
       .from('deals')
-      .select('id, vouchers_sold, total_available, expiration_date, voucher_expiry_hours')
+      .select('id, vouchers_sold, total_available, expiration_date')
       .eq('id', dealId)
       .single()
 
-    if (!deal) {
-      return NextResponse.json({ error: 'Deal not found' }, { status: 404 })
+    if (dealError || !deal) {
+      return NextResponse.json({ error: dealError?.message || 'Deal not found' }, { status: 404 })
+    }
+
+    // Optionally fetch voucher_expiry_hours separately (column may not exist yet)
+    let voucherExpiryHours: number | null = null
+    try {
+      const { data: dealExtra } = await admin
+        .from('deals')
+        .select('voucher_expiry_hours')
+        .eq('id', dealId)
+        .single()
+      voucherExpiryHours = dealExtra?.voucher_expiry_hours ?? null
+    } catch {
+      // column doesn't exist yet, ignore
     }
 
     if (deal.vouchers_sold >= deal.total_available) {
@@ -108,9 +121,9 @@ export async function POST(req: NextRequest) {
 
     // Calculate expiry
     let expiresAt: string | null = null
-    if (deal.voucher_expiry_hours) {
+    if (voucherExpiryHours) {
       const expiry = new Date()
-      expiry.setHours(expiry.getHours() + deal.voucher_expiry_hours)
+      expiry.setHours(expiry.getHours() + voucherExpiryHours)
       expiresAt = expiry.toISOString()
     }
 

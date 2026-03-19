@@ -112,15 +112,25 @@ function VoucherContent() {
   }
 
   if (error) {
+    const isLimitError = error.includes('3 active vouchers')
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center max-w-sm mx-auto px-4">
           <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
             <XCircle className="w-8 h-8 text-red-400" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Something went wrong</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">
+            {isLimitError ? 'Voucher Limit Reached' : 'Something went wrong'}
+          </h2>
           <p className="text-gray-500 mb-6">{error}</p>
-          <Link href="/deals" className="text-orange-500 font-semibold">Back to deals</Link>
+          <div className="flex flex-col gap-3">
+            {isLimitError && (
+              <Link href="/dashboard" className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl transition-colors">
+                Manage My Vouchers
+              </Link>
+            )}
+            <Link href="/deals" className="text-orange-500 font-semibold">Back to deals</Link>
+          </div>
         </div>
       </div>
     )
