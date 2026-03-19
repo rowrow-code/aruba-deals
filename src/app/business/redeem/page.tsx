@@ -101,6 +101,12 @@ export default function RedeemPage() {
     setSubmitting(false)
   }
 
+  const resetResult = () => {
+    setResult(null)
+    setCode('')
+    setScanMode(false)
+  }
+
   const handleRedeem = async (e: React.FormEvent) => {
     e.preventDefault()
     await redeemCode(code)
@@ -130,6 +136,42 @@ export default function RedeemPage() {
           <h2 className="text-xl font-bold text-gray-900 mb-2">Access Restricted</h2>
           <p className="text-gray-500 mb-6">Your business must be approved to redeem vouchers.</p>
           <Link href="/business/dashboard" className="text-orange-500 font-semibold">Back to dashboard</Link>
+        </div>
+      </div>
+    )
+  }
+
+  if (result) {
+    const isAlreadyUsed = result.type === 'error' && result.message.includes('already been used')
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="text-center max-w-sm mx-auto w-full">
+          {result.type === 'success' ? (
+            <>
+              <div className="w-28 h-28 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <CheckCircle className="w-16 h-16 text-green-500" />
+              </div>
+              <h1 className="text-4xl font-black text-gray-900 mb-2">Confirmed!</h1>
+              <p className="text-gray-500 text-lg mb-1">Voucher successfully redeemed</p>
+              <p className="font-semibold text-gray-800 text-lg mb-10">{result.dealTitle}</p>
+            </>
+          ) : (
+            <>
+              <div className="w-28 h-28 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <AlertCircle className="w-16 h-16 text-red-500" />
+              </div>
+              <h1 className="text-4xl font-black text-gray-900 mb-2">
+                {isAlreadyUsed ? 'Already Used' : 'Invalid'}
+              </h1>
+              <p className="text-gray-500 text-lg mb-10">{result.message}</p>
+            </>
+          )}
+          <button
+            onClick={resetResult}
+            className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-xl transition-colors text-lg"
+          >
+            {result.type === 'success' ? 'Redeem Another' : 'Try Again'}
+          </button>
         </div>
       </div>
     )
@@ -214,25 +256,6 @@ export default function RedeemPage() {
             </button>
           </form>
 
-          {result && (
-            <div className={`mt-4 rounded-xl p-4 flex items-start gap-3 ${result.type === 'success' ? 'bg-green-50' : 'bg-red-50'}`}>
-              {result.type === 'success' ? (
-                <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-              ) : (
-                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-              )}
-              <div>
-                {result.type === 'success' ? (
-                  <>
-                    <p className="font-semibold text-green-800">Voucher marked as used</p>
-                    <p className="text-green-700 text-sm mt-0.5">{result.dealTitle}</p>
-                  </>
-                ) : (
-                  <p className="text-red-700 font-medium">{result.message}</p>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

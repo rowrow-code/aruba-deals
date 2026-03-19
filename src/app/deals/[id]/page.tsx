@@ -1,91 +1,35 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Star, MapPin, Clock, CheckCircle, ArrowLeft, Share2, Heart, Users, Search } from 'lucide-react'
-import { getDeal, getDealReviews, submitReview, incrementDealViews } from '@/lib/queries'
+import { MapPin, Clock, CheckCircle, ArrowLeft, Share2, Heart, Users, Search } from 'lucide-react'
+import { getDeal, incrementDealViews } from '@/lib/queries'
 import { supabase } from '@/lib/supabase'
-import { Deal, Review } from '@/lib/types'
+import { Deal } from '@/lib/types'
 
 export default function DealDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const reviewsRef = useRef<HTMLDivElement>(null)
   const [activeImage, setActiveImage] = useState(0)
   const [deal, setDeal] = useState<Deal | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Reviews state
-  const [reviews, setReviews] = useState<Review[]>([])
-  const [userId, setUserId] = useState<string | null>(null)
-  const [userName, setUserName] = useState('')
-  const [hasUsedVoucher, setHasUsedVoucher] = useState(false)
-  const [existingReview, setExistingReview] = useState<Review | null>(null)
-  const [reviewRating, setReviewRating] = useState(0)
-  const [hoverRating, setHoverRating] = useState(0)
-  const [reviewComment, setReviewComment] = useState('')
-  const [submittingReview, setSubmittingReview] = useState(false)
-  const [reviewSuccess, setReviewSuccess] = useState(false)
-
   useEffect(() => {
     if (!params.id) return
-
     const dealId = params.id as string
 
-    // Load deal + reviews in parallel
     Promise.all([
       getDeal(dealId),
-      getDealReviews(dealId),
       supabase.auth.getUser(),
-    ]).then(async ([dealData, reviewsData, { data: { user } }]) => {
+    ]).then(([dealData]) => {
       setDeal(dealData)
-      setReviews(reviewsData)
-      // Increment view count (fire-and-forget)
       incrementDealViews(dealId).catch(() => {})
-
-      if (user) {
-        setUserId(user.id)
-
-        // Get user's name
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', user.id)
-          .single()
-        if (profile?.full_name) setUserName(profile.full_name)
-
-        // Check if user has a used voucher for this deal
-        const { data: voucher } = await supabase
-          .from('vouchers')
-          .select('id')
-          .eq('deal_id', dealId)
-          .eq('user_id', user.id)
-          .eq('status', 'used')
-          .maybeSingle()
-        setHasUsedVoucher(!!voucher)
-
-        // Check if user already reviewed
-        const existing = reviewsData.find((r) => r.user_id === user.id) || null
-        setExistingReview(existing)
-        if (existing) {
-          setReviewRating(existing.rating)
-          setReviewComment(existing.comment || '')
-        }
-      }
-
       setLoading(false)
     }).catch((err) => {
       console.error(err)
       setLoading(false)
     })
-
-    // Scroll to reviews if #reviews in URL
-    if (window.location.hash === '#reviews') {
-      setTimeout(() => {
-        reviewsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }, 600)
-    }
   }, [params.id])
 
   const handleClaimDeal = async () => {
@@ -94,34 +38,6 @@ export default function DealDetailPage() {
       router.push(`/deals/${deal!.id}/voucher`)
     } else {
       router.push(`/auth/login?redirect=/deals/${deal!.id}/voucher`)
-    }
-  }
-
-  const handleSubmitReview = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!userId || !deal || reviewRating === 0) return
-    setSubmittingReview(true)
-
-    try {
-      const saved = await submitReview({
-        deal_id: deal.id,
-        user_id: userId,
-        user_name: userName || 'Anonymous',
-        rating: reviewRating,
-        comment: reviewComment,
-      })
-
-      setReviews((prev) => {
-        const filtered = prev.filter((r) => r.user_id !== userId)
-        return [saved, ...filtered]
-      })
-      setExistingReview(saved)
-      setReviewSuccess(true)
-      setTimeout(() => setReviewSuccess(false), 3000)
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setSubmittingReview(false)
     }
   }
 
@@ -152,9 +68,6 @@ export default function DealDetailPage() {
   const discount = Math.round(((deal.original_price - deal.deal_price) / deal.original_price) * 100)
   const daysLeft = Math.ceil((new Date(deal.expiration_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
   const spotsLeft = deal.total_available - deal.vouchers_sold
-  const avgRating = reviews.length > 0
-    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
-    : deal.rating
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -226,7 +139,7 @@ export default function DealDetailPage() {
             </div>
 
             {/* What's included */}
-            <div className="bg-white rounded-2xl p-5 mb-5 border border-gray-100">
+            <div className="bg-white rounded-2xl p-5 border border-gray-100">
               <h3 className="font-bold text-gray-900 text-lg mb-4">What&apos;s Included</h3>
               <ul className="space-y-2.5">
                 {deal.included.map((item, i) => (
@@ -237,142 +150,11 @@ export default function DealDetailPage() {
                 ))}
               </ul>
             </div>
-
-            {/* ── Reviews ─────────────────────────────────────────── */}
-            <div ref={reviewsRef} id="reviews" className="bg-white rounded-2xl p-5 border border-gray-100 scroll-mt-8">
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="font-bold text-gray-900 text-lg">Reviews</h3>
-                {reviews.length > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    <div className="flex">
-                      {[1, 2, 3, 4, 5].map((i) => (
-                        <Star key={i} className={`w-4 h-4 ${i <= Math.round(avgRating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200 fill-gray-200'}`} />
-                      ))}
-                    </div>
-                    <span className="text-sm font-semibold text-gray-700">{avgRating.toFixed(1)}</span>
-                    <span className="text-sm text-gray-400">({reviews.length})</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Review form — only for users with a used voucher */}
-              {hasUsedVoucher && (
-                <div className="mb-6 p-4 bg-yellow-50 rounded-xl border border-yellow-100">
-                  <p className="text-sm font-semibold text-gray-800 mb-3">
-                    {existingReview ? 'Update your review' : 'Share your experience'}
-                  </p>
-                  <form onSubmit={handleSubmitReview}>
-                    {/* Star picker */}
-                    <div className="flex gap-1 mb-3">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          type="button"
-                          onMouseEnter={() => setHoverRating(star)}
-                          onMouseLeave={() => setHoverRating(0)}
-                          onClick={() => setReviewRating(star)}
-                          className="focus:outline-none"
-                        >
-                          <Star
-                            className={`w-7 h-7 transition-colors ${
-                              star <= (hoverRating || reviewRating)
-                                ? 'text-yellow-400 fill-yellow-400'
-                                : 'text-gray-300 fill-gray-300'
-                            }`}
-                          />
-                        </button>
-                      ))}
-                      {reviewRating > 0 && (
-                        <span className="ml-2 text-sm text-gray-500 self-center">
-                          {['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent'][reviewRating]}
-                        </span>
-                      )}
-                    </div>
-                    <textarea
-                      value={reviewComment}
-                      onChange={(e) => setReviewComment(e.target.value)}
-                      placeholder="Tell others about your experience (optional)..."
-                      rows={3}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none bg-white"
-                    />
-                    {reviewSuccess && (
-                      <p className="text-sm text-green-600 font-medium mt-2 flex items-center gap-1">
-                        <CheckCircle className="w-4 h-4" /> Review saved!
-                      </p>
-                    )}
-                    <button
-                      type="submit"
-                      disabled={submittingReview || reviewRating === 0}
-                      className="mt-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors"
-                    >
-                      {submittingReview ? 'Saving...' : existingReview ? 'Update Review' : 'Submit Review'}
-                    </button>
-                  </form>
-                </div>
-              )}
-
-              {/* Reviews list */}
-              {reviews.length === 0 ? (
-                <div className="text-center py-8">
-                  <div className="text-3xl mb-2">⭐</div>
-                  <p className="text-gray-400 text-sm">No reviews yet. Be the first!</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {reviews.map((review) => (
-                    <div key={review.id} className="border-b border-gray-100 last:border-0 pb-4 last:pb-0">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-white text-xs font-bold">
-                            {review.user_name.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-gray-900">{review.user_name}</span>
-                            {review.user_id === userId && (
-                              <span className="text-xs bg-orange-50 text-orange-500 px-1.5 py-0.5 rounded-full font-medium">You</span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1 mt-0.5">
-                            {[1, 2, 3, 4, 5].map((i) => (
-                              <Star key={i} className={`w-3.5 h-3.5 ${i <= review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200 fill-gray-200'}`} />
-                            ))}
-                            <span className="text-xs text-gray-400 ml-1">
-                              {new Date(review.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      {review.comment && (
-                        <p className="text-sm text-gray-600 ml-11 leading-relaxed">{review.comment}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
 
           {/* Right column - Purchase card */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm sticky top-24">
-              {/* Rating */}
-              <div className="flex items-center gap-2 mb-5">
-                <div className="flex">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`w-5 h-5 ${i < Math.round(avgRating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200 fill-gray-200'}`}
-                    />
-                  ))}
-                </div>
-                <span className="font-semibold text-gray-900">{avgRating.toFixed(1)}</span>
-                {reviews.length > 0 && (
-                  <span className="text-gray-400 text-sm">({reviews.length} reviews)</span>
-                )}
-              </div>
-
               {/* Price */}
               <div className="mb-5">
                 <div className="flex items-baseline gap-3">
