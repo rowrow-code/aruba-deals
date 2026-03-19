@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { CheckCircle, ArrowLeft, MapPin, Clock, XCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { getDeal, createVoucher } from '@/lib/queries'
+import { getDeal } from '@/lib/queries'
 import { Deal, Voucher } from '@/lib/types'
 import QRCodeImage from '@/components/QRCodeImage'
 
@@ -50,10 +50,23 @@ function VoucherContent() {
         setVoucher(existing as Voucher)
       } else {
         try {
-          const newVoucher = await createVoucher(params.id as string, user.id, slotId ?? null)
-          setVoucher(newVoucher)
-        } catch (err) {
-          setError(err instanceof Error ? err.message : 'Failed to create voucher. Please try again.')
+          const { data: { session } } = await supabase.auth.getSession()
+          const res = await fetch('/api/create-voucher', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session?.access_token ?? ''}`,
+            },
+            body: JSON.stringify({ dealId: params.id, bookingSlotId: slotId ?? null }),
+          })
+          const json = await res.json()
+          if (!res.ok) {
+            setError(json.error || 'Failed to create voucher. Please try again.')
+          } else {
+            setVoucher(json.voucher as Voucher)
+          }
+        } catch (err: any) {
+          setError(err?.message || 'Failed to create voucher. Please try again.')
         }
       }
 
@@ -66,26 +79,23 @@ function VoucherContent() {
   const handleCancelVoucher = async () => {
     if (!voucher || !deal) return
     setCancelling(true)
-
-    const { error } = await supabase.from('vouchers').delete().eq('id', voucher.id)
-
-    if (!error) {
-      // Decrement vouchers_sold so the spot opens back up
-      const { data: dealData } = await supabase
-        .from('deals')
-        .select('vouchers_sold')
-        .eq('id', deal.id)
-        .single()
-
-      if (dealData && dealData.vouchers_sold > 0) {
-        await supabase
-          .from('deals')
-          .update({ vouchers_sold: dealData.vouchers_sold - 1 })
-          .eq('id', deal.id)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/delete-voucher', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token ?? ''}`,
+        },
+        body: JSON.stringify({ voucherId: voucher.id, dealId: deal.id }),
+      })
+      if (res.ok) {
+        router.push(`/deals/${deal.id}`)
+      } else {
+        setCancelling(false)
+        setConfirmCancel(false)
       }
-
-      router.push(`/deals/${deal.id}`)
-    } else {
+    } catch {
       setCancelling(false)
       setConfirmCancel(false)
     }

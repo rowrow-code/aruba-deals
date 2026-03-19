@@ -324,12 +324,17 @@ export default function BusinessDashboardPage() {
       .insert({ business_id: business.id, message: supportMessage })
     if (!error) {
       setSupportSent(true)
+      const msg = supportMessage
       setSupportMessage('')
-      fetch('/api/notify-admin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ supportMessage: supportMessage, businessName: business.name }),
-      }).catch(() => {})
+      try {
+        await fetch('/api/notify-admin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ supportMessage: msg, businessName: business.name }),
+        })
+      } catch (e) {
+        console.error('notify-admin failed:', e)
+      }
     }
     setSendingSupport(false)
   }
