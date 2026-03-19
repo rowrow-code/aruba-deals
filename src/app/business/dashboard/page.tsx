@@ -287,19 +287,20 @@ export default function BusinessDashboardPage() {
 
   const handleDeleteDeal = async (dealId: string) => {
     setDeletingId(dealId)
-    const { error, count } = await supabase
-      .from('deals')
-      .delete({ count: 'exact' })
-      .eq('id', dealId)
-
-    if (error) {
-      alert(`Delete failed: ${error.message}`)
-    } else if (count === 0) {
-      // RLS blocked it silently — reload to reflect real state
-      alert('Could not delete. Check Supabase RLS policies (see console).')
-      console.error('Delete was blocked by RLS policy. Run this SQL in Supabase:\nCREATE POLICY "Business owners can delete their deals" ON public.deals FOR DELETE USING (business_id IN (SELECT id FROM businesses WHERE owner_id = auth.uid()));')
-    } else {
-      setDeals((prev) => prev.filter((d) => d.id !== dealId))
+    try {
+      const res = await fetch('/api/delete-deal', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dealId }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        alert(`Delete failed: ${err.error || 'Unknown error'}`)
+      } else {
+        setDeals((prev) => prev.filter((d) => d.id !== dealId))
+      }
+    } catch {
+      alert('Delete failed: network error')
     }
     setConfirmDeleteId(null)
     setDeletingId(null)
