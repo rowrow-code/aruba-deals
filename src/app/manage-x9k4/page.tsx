@@ -19,6 +19,8 @@ function AdminContent() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [confirmDeleteDealId, setConfirmDeleteDealId] = useState<string | null>(null)
   const [deletingDealId, setDeletingDealId] = useState<string | null>(null)
+  const [confirmDeleteBusinessId, setConfirmDeleteBusinessId] = useState<string | null>(null)
+  const [deletingBusinessId, setDeletingBusinessId] = useState<string | null>(null)
   const focusedRef = useRef<HTMLDivElement | null>(null)
 
   const [users, setUsers] = useState<any[]>([])
@@ -177,6 +179,19 @@ function AdminContent() {
     setActionLoading(null)
   }
 
+  const handleDeleteBusiness = async (businessId: string) => {
+    setDeletingBusinessId(businessId)
+    // Delete all deals for this business first
+    await supabase.from('deals').delete().eq('business_id', businessId)
+    // Then delete the business
+    const { error } = await supabase.from('businesses').delete().eq('id', businessId)
+    if (!error) {
+      setBusinesses((prev) => prev.filter((b) => b.id !== businessId))
+    }
+    setConfirmDeleteBusinessId(null)
+    setDeletingBusinessId(null)
+  }
+
   const handleDeleteDeal = async (dealId: string) => {
     setDeletingDealId(dealId)
     const { error } = await supabase.from('deals').delete().eq('id', dealId)
@@ -315,6 +330,7 @@ function AdminContent() {
                         <h2 className="text-lg font-bold text-gray-900">{business.name}</h2>
                         <StatusBadge status={business.status} />
                       </div>
+
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                         <div>
                           <p className="text-gray-400 text-xs mb-0.5">Category</p>
@@ -349,27 +365,62 @@ function AdminContent() {
                       </p>
                     </div>
 
-                    {business.status === 'pending' && (
+                    <div className="flex gap-2 flex-shrink-0">
+                      {business.status === 'pending' && (
+                        <>
+                          <button
+                            onClick={() => handleAction(business, 'approved')}
+                            disabled={actionLoading === business.id}
+                            className="flex items-center gap-1.5 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-xl text-sm transition-colors"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleAction(business, 'rejected')}
+                            disabled={actionLoading === business.id}
+                            className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 disabled:opacity-50 text-red-600 font-semibold px-4 py-2 rounded-xl text-sm transition-colors"
+                          >
+                            <XCircle className="w-4 h-4" />
+                            Reject
+                          </button>
+                        </>
+                      )}
+                      {confirmDeleteBusinessId !== business.id && (
+                        <button
+                          onClick={() => setConfirmDeleteBusinessId(business.id)}
+                          className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-500 font-semibold px-3 py-2 rounded-xl text-sm transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Remove business confirmation */}
+                  {confirmDeleteBusinessId === business.id && (
+                    <div className="border-t border-red-100 bg-red-50 px-6 py-4 flex items-center justify-between gap-4 mt-4 -mx-6 -mb-6 rounded-b-2xl">
+                      <p className="text-sm text-red-700 font-medium">
+                        Remove <strong>{business.name}</strong> and all their deals? This cannot be undone.
+                      </p>
                       <div className="flex gap-2 flex-shrink-0">
                         <button
-                          onClick={() => handleAction(business, 'approved')}
-                          disabled={actionLoading === business.id}
-                          className="flex items-center gap-1.5 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-xl text-sm transition-colors"
+                          onClick={() => setConfirmDeleteBusinessId(null)}
+                          className="px-4 py-2 rounded-xl text-sm font-semibold bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
                         >
-                          <CheckCircle className="w-4 h-4" />
-                          Approve
+                          Cancel
                         </button>
                         <button
-                          onClick={() => handleAction(business, 'rejected')}
-                          disabled={actionLoading === business.id}
-                          className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 disabled:opacity-50 text-red-600 font-semibold px-4 py-2 rounded-xl text-sm transition-colors"
+                          onClick={() => handleDeleteBusiness(business.id)}
+                          disabled={deletingBusinessId === business.id}
+                          className="px-4 py-2 rounded-xl text-sm font-semibold bg-red-500 hover:bg-red-600 disabled:opacity-60 text-white transition-colors"
                         >
-                          <XCircle className="w-4 h-4" />
-                          Reject
+                          {deletingBusinessId === business.id ? 'Removing...' : 'Yes, Remove'}
                         </button>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
