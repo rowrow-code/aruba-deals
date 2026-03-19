@@ -325,7 +325,7 @@ export default function BusinessDashboardPage() {
     setSupportMessage('')
 
     // Try DB insert (may fail silently due to RLS — that's ok)
-    supabase.from('support_messages').insert({ business_id: business.id, message: msg }).then(() => {}).catch(() => {})
+    void supabase.from('support_messages').insert({ business_id: business.id, message: msg })
 
     // Always send email to admin
     try {
