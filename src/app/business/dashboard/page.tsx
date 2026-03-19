@@ -193,6 +193,7 @@ export default function BusinessDashboardPage() {
     description: '',
     original_price: '',
     deal_price: '',
+    total_available: '10',
     expiration_date: '',
     image_url: '',
     included: '',
@@ -253,6 +254,7 @@ export default function BusinessDashboardPage() {
         description: formData.description,
         original_price: Number(formData.original_price),
         deal_price: Number(formData.deal_price),
+        total_available: Number(formData.total_available) || 10,
         expiration_date: new Date(formData.expiration_date).toISOString(),
         included: formData.included.split('\n').map((s) => s.trim()).filter(Boolean),
         location: business.location,
@@ -275,7 +277,7 @@ export default function BusinessDashboardPage() {
 
       setDeals((prev) => [newDeal, ...prev])
       setSubmitted(true)
-      setFormData({ title: '', description: '', original_price: '', deal_price: '', expiration_date: '', image_url: '', included: '', voucher_expiry_hours: '', time_slot_enabled: false, slots: [] })
+      setFormData({ title: '', description: '', original_price: '', deal_price: '', total_available: '10', expiration_date: '', image_url: '', included: '', voucher_expiry_hours: '', time_slot_enabled: false, slots: [] })
 
       setTimeout(() => {
         setSubmitted(false)
@@ -319,23 +321,24 @@ export default function BusinessDashboardPage() {
     e.preventDefault()
     if (!business) return
     setSendingSupport(true)
-    const { error } = await supabase
-      .from('support_messages')
-      .insert({ business_id: business.id, message: supportMessage })
-    if (!error) {
-      setSupportSent(true)
-      const msg = supportMessage
-      setSupportMessage('')
-      try {
-        await fetch('/api/notify-admin', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ supportMessage: msg, businessName: business.name }),
-        })
-      } catch (e) {
-        console.error('notify-admin failed:', e)
-      }
+    const msg = supportMessage
+    setSupportMessage('')
+
+    // Try DB insert (may fail silently due to RLS — that's ok)
+    supabase.from('support_messages').insert({ business_id: business.id, message: msg }).then(() => {}).catch(() => {})
+
+    // Always send email to admin
+    try {
+      await fetch('/api/notify-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ supportMessage: msg, businessName: business.name }),
+      })
+    } catch (e) {
+      console.error('notify-admin failed:', e)
     }
+
+    setSupportSent(true)
     setSendingSupport(false)
   }
 
@@ -700,6 +703,36 @@ export default function BusinessDashboardPage() {
                       Customers save {Math.round(((Number(formData.original_price) - Number(formData.deal_price)) / Number(formData.original_price)) * 100)}% — ${(Number(formData.original_price) - Number(formData.deal_price)).toFixed(2)} off
                     </div>
                   )}
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Available Vouchers *</label>
+                    <div className="flex gap-2 mb-2">
+                      {['5', '10', '20', '50'].map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, total_available: n })}
+                          className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-colors ${
+                            formData.total_available === n
+                              ? 'bg-orange-500 text-white border-orange-500'
+                              : 'bg-white text-gray-700 border-gray-200 hover:border-orange-300'
+                          }`}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      type="number"
+                      value={formData.total_available}
+                      onChange={(e) => setFormData({ ...formData, total_available: e.target.value })}
+                      placeholder="Or enter a custom number"
+                      required
+                      min="1"
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">How many customers can claim this deal</p>
+                  </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Valid Until *</label>

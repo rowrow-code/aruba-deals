@@ -30,7 +30,11 @@ export async function getDeal(id: string): Promise<Deal | null> {
 }
 
 export async function incrementDealViews(dealId: string): Promise<void> {
-  await supabase.rpc('increment_deal_views', { deal_id: dealId })
+  fetch('/api/increment-views', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dealId }),
+  }).catch(() => {})
 }
 
 export async function getMyVouchers(userId: string): Promise<Voucher[]> {
