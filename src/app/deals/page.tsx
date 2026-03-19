@@ -48,8 +48,8 @@ function DealsContent() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8">
+          <h1 className="text-xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-6">
             {category ? `${category} Deals` : 'All Deals in Aruba'}
           </h1>
 
@@ -100,7 +100,7 @@ function DealsContent() {
             </p>
 
             {sorted.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
                 {sorted.map((deal) => (
                   <DealCard key={deal.id} deal={deal} />
                 ))}

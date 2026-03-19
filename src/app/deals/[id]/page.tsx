@@ -145,7 +145,21 @@ export default function DealDetailPage() {
     : 0
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-24 lg:pb-0">
+      {/* Sticky mobile bottom CTA */}
+      <div className="lg:hidden fixed bottom-16 left-0 right-0 z-40 bg-white border-t border-gray-100 px-4 py-3 flex items-center gap-3 shadow-xl">
+        <div className="flex-1">
+          <span className="text-2xl font-black text-orange-500">${deal.deal_price}</span>
+          <span className="text-gray-400 line-through text-sm ml-2">${deal.original_price}</span>
+        </div>
+        <button
+          onClick={handleClaimDeal}
+          className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl transition-colors shadow-lg shadow-orange-200 active:scale-95 text-base"
+        >
+          Claim This Deal
+        </button>
+      </div>
+
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Link href="/deals" className="flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-6 transition-colors w-fit">
           <ArrowLeft className="w-4 h-4" />

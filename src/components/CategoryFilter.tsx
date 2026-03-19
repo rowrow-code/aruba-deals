@@ -39,7 +39,7 @@ export default function CategoryFilter({ activeCategory }: CategoryFilterProps) 
           <button
             key={cat.name}
             onClick={() => handleCategoryClick(cat.name)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl font-medium whitespace-nowrap transition-all text-sm ${
               isActive
                 ? 'bg-orange-500 text-white shadow-md shadow-orange-200'
                 : `${cat.color} hover:opacity-80`

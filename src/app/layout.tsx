@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
+import BottomNav from '@/components/BottomNav'
 import AuthErrorRedirect from '@/components/AuthErrorRedirect'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -23,8 +24,9 @@ export default function RootLayout({
       <body className={inter.className}>
         <AuthErrorRedirect />
         <Navbar />
-        <main>{children}</main>
+        <main className="pb-16 md:pb-0">{children}</main>
         <Footer />
+        <BottomNav />
       </body>
     </html>
   )

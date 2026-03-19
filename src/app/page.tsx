@@ -26,38 +26,40 @@ export default function HomePage() {
             className="w-full h-full object-cover opacity-20"
           />
         </div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-28">
           <div className="text-center">
-            <div className="inline-flex items-center bg-white/20 backdrop-blur-sm text-white text-sm font-medium px-4 py-2 rounded-full mb-6">
+            <div className="inline-flex items-center bg-white/20 backdrop-blur-sm text-white text-sm font-medium px-4 py-2 rounded-full mb-5">
               <Star className="w-4 h-4 mr-2 fill-yellow-300 text-yellow-300" />
               Aruba&apos;s #1 Deals Platform
             </div>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold text-white mb-4 sm:mb-6 leading-tight">
               Discover the Best
               <br />
               <span className="text-yellow-300">Deals in Aruba</span>
             </h1>
-            <p className="text-xl text-orange-100 mb-10 max-w-2xl mx-auto">
-              Save big on restaurants, water sports, spa treatments, and local experiences. The best of Aruba at unbeatable prices.
+            <p className="text-base sm:text-xl text-orange-100 mb-8 max-w-2xl mx-auto px-2">
+              Save big on restaurants, water sports, spa treatments, and local experiences.
             </p>
 
             {/* Search bar */}
             <div className="max-w-2xl mx-auto">
-              <div className="flex items-center bg-white rounded-2xl shadow-2xl p-2">
-                <Search className="w-5 h-5 text-gray-400 ml-3 flex-shrink-0" />
-                <input
-                  type="text"
-                  placeholder="Search deals, restaurants, activities..."
-                  className="flex-1 px-4 py-3 text-gray-700 bg-transparent outline-none placeholder-gray-400"
-                />
-                <Link href="/deals" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-3 rounded-xl transition-colors whitespace-nowrap">
+              <div className="bg-white rounded-2xl shadow-2xl p-2 flex flex-col sm:flex-row gap-2 sm:gap-0 sm:items-center">
+                <div className="flex items-center flex-1 px-3">
+                  <Search className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Search deals, activities..."
+                    className="flex-1 px-3 py-3 text-gray-700 bg-transparent outline-none placeholder-gray-400 text-sm sm:text-base"
+                  />
+                </div>
+                <Link href="/deals" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-3 rounded-xl transition-colors text-center text-sm sm:text-base">
                   Find Deals
                 </Link>
               </div>
             </div>
 
             {/* Stats */}
-            <div className="flex flex-wrap justify-center gap-8 mt-12">
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap justify-center gap-4 sm:gap-8 mt-10">
               {[
                 { value: '72+', label: 'Active Deals' },
                 { value: '40+', label: 'Local Businesses' },
@@ -66,7 +68,7 @@ export default function HomePage() {
               ].map((stat) => (
                 <div key={stat.label} className="text-center">
                   <div className="text-2xl font-bold text-white">{stat.value}</div>
-                  <div className="text-orange-200 text-sm">{stat.label}</div>
+                  <div className="text-orange-200 text-xs sm:text-sm">{stat.label}</div>
                 </div>
               ))}
             </div>
@@ -123,7 +125,7 @@ export default function HomePage() {
             View all <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
           {featuredDeals.map((deal) => (
             <DealCard key={deal.id} deal={deal} />
           ))}
@@ -138,7 +140,7 @@ export default function HomePage() {
             See all <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
           {allDeals.map((deal) => (
             <DealCard key={deal.id} deal={deal} />
           ))}

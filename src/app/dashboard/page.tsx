@@ -106,7 +106,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
             {[
               { label: 'Active Vouchers', value: activeVouchers.length, icon: QrCode, color: 'text-orange-500 bg-orange-50' },
               { label: 'Deals Used', value: usedVouchers.length, icon: CheckCircle, color: 'text-green-500 bg-green-50' },
@@ -114,12 +114,12 @@ export default function DashboardPage() {
             ].map((stat) => {
               const Icon = stat.icon
               return (
-                <div key={stat.label} className="bg-gray-50 rounded-2xl p-4 text-center">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2 ${stat.color}`}>
-                    <Icon className="w-5 h-5" />
+                <div key={stat.label} className="bg-gray-50 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center">
+                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center mx-auto mb-2 ${stat.color}`}>
+                    <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
-                  <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
-                  <div className="text-xs text-gray-500 mt-0.5">{stat.label}</div>
+                  <div className="text-xl sm:text-2xl font-bold text-gray-900">{stat.value}</div>
+                  <div className="text-[10px] sm:text-xs text-gray-500 mt-0.5 leading-tight">{stat.label}</div>
                 </div>
               )
             })}
