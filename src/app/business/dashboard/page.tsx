@@ -25,14 +25,15 @@ function ImageUploader({ value, onChange }: { value: string; onChange: (url: str
     setUploading(true)
     setError(null)
     try {
-      const ext = file.name.split('.').pop() || 'jpg'
-      const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-      const { error: uploadError } = await supabase.storage
-        .from('deal-images')
-        .upload(filename, file, { contentType: file.type })
-      if (uploadError) throw uploadError
-      const { data } = supabase.storage.from('deal-images').getPublicUrl(filename)
-      onChange(data.publicUrl)
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/upload-image', { method: 'POST', body: fd })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Upload failed')
+      }
+      const { url } = await res.json()
+      onChange(url)
       setError(null)
     } catch (err: any) {
       console.error('Upload error:', err)
