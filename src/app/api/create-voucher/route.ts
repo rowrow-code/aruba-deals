@@ -27,18 +27,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No dealId provided' }, { status: 400 })
     }
 
-    // Check max 3 active vouchers
-    const { count } = await admin
+    // Get active vouchers and clean up any whose deal no longer exists
+    const { data: activeVouchers } = await admin
       .from('vouchers')
-      .select('id', { count: 'exact', head: true })
+      .select('id, deal_id')
       .eq('user_id', user.id)
       .eq('status', 'active')
 
-    if ((count ?? 0) >= 3) {
-      return NextResponse.json(
-        { error: 'You already have 3 active vouchers. Use or cancel one before claiming another.' },
-        { status: 400 }
-      )
+    if (activeVouchers && activeVouchers.length > 0) {
+      const dealIds = activeVouchers.map((v: any) => v.deal_id)
+      const { data: existingDeals } = await admin
+        .from('deals')
+        .select('id')
+        .in('id', dealIds)
+
+      const validDealIds = new Set((existingDeals ?? []).map((d: any) => d.id))
+      const ghostVouchers = activeVouchers.filter((v: any) => !validDealIds.has(v.deal_id))
+
+      // Delete ghost vouchers (for deals that were deleted)
+      for (const ghost of ghostVouchers) {
+        await admin.from('vouchers').delete().eq('id', ghost.id)
+      }
+
+      const realCount = activeVouchers.length - ghostVouchers.length
+      if (realCount >= 3) {
+        return NextResponse.json(
+          { error: 'You already have 3 active vouchers. Use or cancel one before claiming another.' },
+          { status: 400 }
+        )
+      }
     }
 
     // Check deal exists and has spots

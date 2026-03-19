@@ -32,8 +32,7 @@ function VoucherContent() {
 
       const dealData = await getDeal(params.id as string)
       if (!dealData) {
-        setError('Deal not found')
-        setLoading(false)
+        router.replace('/deals')
         return
       }
       setDeal(dealData)
