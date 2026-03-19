@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
 
     const qrCode = `ARUBA-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
 
-    // Insert voucher
+    // Insert voucher (booking_slot_id excluded — column may not exist in schema)
     const { data: voucher, error: insertError } = await admin
       .from('vouchers')
       .insert({
@@ -138,7 +138,6 @@ export async function POST(req: NextRequest) {
         qr_code: qrCode,
         status: 'active',
         expires_at: expiresAt,
-        booking_slot_id: bookingSlotId ?? null,
       })
       .select()
       .single()
