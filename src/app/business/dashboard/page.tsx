@@ -42,17 +42,21 @@ function ImageUploader({ value, onChange }: { value: string; onChange: (url: str
     }
   }
 
-  // Global paste listener — works even without focusing the drop zone
+  // Global paste listener — only fires when NOT typing in an input/textarea
   useEffect(() => {
     if (!active) return
     const handleGlobalPaste = (e: ClipboardEvent) => {
+      const tag = (document.activeElement as HTMLElement)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return // let the field handle it
+
       const file = e.clipboardData?.files[0]
       if (file && file.type.startsWith('image/')) {
         upload(file)
         return
       }
+      // Only accept URLs that look like images
       const text = e.clipboardData?.getData('text') || ''
-      if (text.match(/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|avif|svg)/i) || text.match(/^https?:\/\//)) {
+      if (text.match(/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|avif|svg)/i)) {
         onChange(text.trim())
       }
     }
@@ -282,8 +286,18 @@ export default function BusinessDashboardPage() {
 
   const handleDeleteDeal = async (dealId: string) => {
     setDeletingId(dealId)
-    const { error } = await supabase.from('deals').delete().eq('id', dealId)
-    if (!error) {
+    const { error, count } = await supabase
+      .from('deals')
+      .delete({ count: 'exact' })
+      .eq('id', dealId)
+
+    if (error) {
+      alert(`Delete failed: ${error.message}`)
+    } else if (count === 0) {
+      // RLS blocked it silently — reload to reflect real state
+      alert('Could not delete. Check Supabase RLS policies (see console).')
+      console.error('Delete was blocked by RLS policy. Run this SQL in Supabase:\nCREATE POLICY "Business owners can delete their deals" ON public.deals FOR DELETE USING (business_id IN (SELECT id FROM businesses WHERE owner_id = auth.uid()));')
+    } else {
       setDeals((prev) => prev.filter((d) => d.id !== dealId))
     }
     setConfirmDeleteId(null)
