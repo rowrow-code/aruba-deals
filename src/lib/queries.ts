@@ -29,6 +29,10 @@ export async function getDeal(id: string): Promise<Deal | null> {
   return data as Deal
 }
 
+export async function incrementDealViews(dealId: string): Promise<void> {
+  await supabase.rpc('increment_deal_views', { deal_id: dealId })
+}
+
 export async function getMyVouchers(userId: string): Promise<Voucher[]> {
   const { data, error } = await supabase
     .from('vouchers')
@@ -73,6 +77,8 @@ export async function createDeal(dealData: {
   location: string
   images?: string[]
   total_available?: number
+  voucher_expiry_hours?: number | null
+  time_slot_enabled?: boolean
 }): Promise<Deal> {
   const { data, error } = await supabase
     .from('deals')
@@ -115,8 +121,58 @@ export async function submitReview(review: {
   return data as Review
 }
 
-export async function createVoucher(dealId: string, userId: string): Promise<Voucher> {
+export async function createVoucher(
+  dealId: string,
+  userId: string,
+  bookingSlotId?: string | null
+): Promise<Voucher> {
+  // Enforce max 3 active vouchers per customer
+  const { count } = await supabase
+    .from('vouchers')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('status', 'active')
+
+  if ((count ?? 0) >= 3) {
+    throw new Error('You already have 3 active vouchers. Cancel or use one before claiming another.')
+  }
+
+  // Check booking slot capacity if provided
+  if (bookingSlotId) {
+    const { data: slot } = await supabase
+      .from('booking_slots')
+      .select('id, max_capacity')
+      .eq('id', bookingSlotId)
+      .single()
+
+    if (slot) {
+      const { count: slotCount } = await supabase
+        .from('vouchers')
+        .select('id', { count: 'exact', head: true })
+        .eq('booking_slot_id', bookingSlotId)
+        .eq('status', 'active')
+
+      if ((slotCount ?? 0) >= slot.max_capacity) {
+        throw new Error('This time slot is fully booked. Please choose another slot.')
+      }
+    }
+  }
+
+  // Fetch deal for expiry calculation
+  const { data: deal } = await supabase
+    .from('deals')
+    .select('voucher_expiry_hours')
+    .eq('id', dealId)
+    .single()
+
   const qrCode = `ARUBA-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
+
+  let expiresAt: string | null = null
+  if (deal?.voucher_expiry_hours) {
+    const expiry = new Date()
+    expiry.setHours(expiry.getHours() + deal.voucher_expiry_hours)
+    expiresAt = expiry.toISOString()
+  }
 
   const { data, error } = await supabase
     .from('vouchers')
@@ -125,6 +181,8 @@ export async function createVoucher(dealId: string, userId: string): Promise<Vou
       user_id: userId,
       qr_code: qrCode,
       status: 'active',
+      expires_at: expiresAt,
+      booking_slot_id: bookingSlotId ?? null,
     })
     .select()
     .single()

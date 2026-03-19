@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, TrendingUp, Eye, CheckCircle, Tag, Trash2, Upload, X } from 'lucide-react'
+import { Plus, TrendingUp, Eye, CheckCircle, Tag, Trash2, Upload, X, AlertTriangle, Store, XCircle, Clock, ClipboardList } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { getMyBusiness, getBusinessDeals, createDeal } from '@/lib/queries'
 import { Business, Deal } from '@/lib/types'
@@ -136,12 +136,19 @@ export default function BusinessDashboardPage() {
     expiration_date: '',
     image_url: '',
     included: '',
+    voucher_expiry_hours: '',
+    time_slot_enabled: false,
+    slots: [] as string[],
   })
   const [submitted, setSubmitted] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [supportMessage, setSupportMessage] = useState('')
+  const [sendingSupport, setSendingSupport] = useState(false)
+  const [supportSent, setSupportSent] = useState(false)
+  const [newSlotLabel, setNewSlotLabel] = useState('')
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -170,7 +177,7 @@ export default function BusinessDashboardPage() {
     totalVouchersSold: deals.reduce((sum, d) => sum + d.vouchers_sold, 0),
     activeDeals: deals.filter((d) => d.is_active).length,
     totalRevenue: deals.reduce((sum, d) => sum + d.deal_price * d.vouchers_sold, 0),
-    totalViews: deals.length * 160,
+    totalViews: deals.reduce((sum, d) => sum + (d.views ?? 0), 0),
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -190,11 +197,25 @@ export default function BusinessDashboardPage() {
         included: formData.included.split('\n').map((s) => s.trim()).filter(Boolean),
         location: business.location,
         images: formData.image_url ? [formData.image_url] : [],
+        voucher_expiry_hours: formData.voucher_expiry_hours ? Number(formData.voucher_expiry_hours) : null,
+        time_slot_enabled: formData.time_slot_enabled,
       })
+
+      // Insert booking slots if enabled
+      if (formData.time_slot_enabled && formData.slots.length > 0) {
+        await supabase.from('booking_slots').insert(
+          formData.slots.map((label) => ({
+            deal_id: newDeal.id,
+            slot_label: label,
+            max_capacity: 1,
+            is_active: true,
+          }))
+        )
+      }
 
       setDeals((prev) => [newDeal, ...prev])
       setSubmitted(true)
-      setFormData({ title: '', description: '', original_price: '', deal_price: '', expiration_date: '', image_url: '', included: '' })
+      setFormData({ title: '', description: '', original_price: '', deal_price: '', expiration_date: '', image_url: '', included: '', voucher_expiry_hours: '', time_slot_enabled: false, slots: [] })
 
       setTimeout(() => {
         setSubmitted(false)
@@ -217,6 +238,20 @@ export default function BusinessDashboardPage() {
     setDeletingId(null)
   }
 
+  const handleSendSupport = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!business) return
+    setSendingSupport(true)
+    const { error } = await supabase
+      .from('support_messages')
+      .insert({ business_id: business.id, message: supportMessage })
+    if (!error) {
+      setSupportSent(true)
+      setSupportMessage('')
+    }
+    setSendingSupport(false)
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -229,7 +264,7 @@ export default function BusinessDashboardPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center max-w-sm mx-auto px-4">
-          <div className="text-6xl mb-4">⚠️</div>
+          <div className="w-16 h-16 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-4"><AlertTriangle className="w-8 h-8 text-yellow-500" /></div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Something went wrong</h2>
           <p className="text-gray-500 mb-2">{loadError}</p>
           <p className="text-xs text-gray-400 mb-6">Try signing out and back in, then visit this page again.</p>
@@ -245,7 +280,7 @@ export default function BusinessDashboardPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center max-w-sm mx-auto px-4">
-          <div className="text-6xl mb-4">🏪</div>
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4"><Store className="w-8 h-8 text-gray-400" /></div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">No business found</h2>
           <p className="text-gray-500 mb-6">You don&apos;t have a business registered yet.</p>
           <a
@@ -263,7 +298,7 @@ export default function BusinessDashboardPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center max-w-sm mx-auto px-4">
-          <div className="text-6xl mb-4">⏳</div>
+          <div className="w-16 h-16 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-4"><Clock className="w-8 h-8 text-yellow-500" /></div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Application Under Review</h2>
           <p className="text-gray-500 mb-2">
             Thank you for registering <strong>{business.name}</strong>.
@@ -278,7 +313,7 @@ export default function BusinessDashboardPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center max-w-sm mx-auto px-4">
-          <div className="text-6xl mb-4">❌</div>
+          <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4"><XCircle className="w-8 h-8 text-red-400" /></div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Application Not Approved</h2>
           <p className="text-gray-500 mb-6">
             Unfortunately, your application for <strong>{business.name}</strong> was not approved.
@@ -392,6 +427,36 @@ export default function BusinessDashboardPage() {
                 </div>
               </div>
             )}
+
+            {/* Contact Support */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm mt-6">
+              <h2 className="font-bold text-gray-900 text-lg mb-1">Contact Support</h2>
+              <p className="text-gray-500 text-sm mb-4">Send a message to the ArubaSave admin team</p>
+              {supportSent ? (
+                <div className="flex items-center gap-2 text-green-700 bg-green-50 rounded-xl p-4">
+                  <CheckCircle className="w-5 h-5 flex-shrink-0" />
+                  <span className="text-sm font-medium">Message sent! We'll get back to you soon.</span>
+                </div>
+              ) : (
+                <form onSubmit={handleSendSupport} className="space-y-3">
+                  <textarea
+                    value={supportMessage}
+                    onChange={(e) => setSupportMessage(e.target.value)}
+                    placeholder="Describe your question or issue..."
+                    rows={4}
+                    required
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                  />
+                  <button
+                    type="submit"
+                    disabled={sendingSupport || !supportMessage.trim()}
+                    className="bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-colors"
+                  >
+                    {sendingSupport ? 'Sending...' : 'Send Message'}
+                  </button>
+                </form>
+              )}
+            </div>
           </div>
         )}
 
@@ -400,7 +465,7 @@ export default function BusinessDashboardPage() {
           <div className="space-y-4">
             {deals.length === 0 ? (
               <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-                <div className="text-4xl mb-3">📋</div>
+                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3"><ClipboardList className="w-6 h-6 text-gray-400" /></div>
                 <p className="text-gray-500 mb-4">No deals yet. Create your first deal!</p>
                 <button
                   onClick={() => setActiveTab('create')}
@@ -560,6 +625,82 @@ export default function BusinessDashboardPage() {
                       className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     />
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Voucher Expiry</label>
+                    <select
+                      value={formData.voucher_expiry_hours}
+                      onChange={(e) => setFormData({ ...formData, voucher_expiry_hours: e.target.value })}
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
+                    >
+                      <option value="">No expiry (use deal date)</option>
+                      <option value="24">24 hours after claiming</option>
+                      <option value="72">72 hours after claiming</option>
+                      <option value="168">7 days after claiming</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.time_slot_enabled}
+                        onChange={(e) => setFormData({ ...formData, time_slot_enabled: e.target.checked, slots: [] })}
+                        className="w-4 h-4 accent-orange-500"
+                      />
+                      <span className="text-sm font-medium text-gray-700">Enable time slot booking</span>
+                    </label>
+                  </div>
+
+                  {formData.time_slot_enabled && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Time Slots</label>
+                      <div className="space-y-2 mb-2">
+                        {formData.slots.map((slot, i) => (
+                          <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 text-sm">
+                            <span className="flex-1 text-gray-700">{slot}</span>
+                            <button
+                              type="button"
+                              onClick={() => setFormData({ ...formData, slots: formData.slots.filter((_, idx) => idx !== i) })}
+                              className="text-red-400 hover:text-red-600"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newSlotLabel}
+                          onChange={(e) => setNewSlotLabel(e.target.value)}
+                          placeholder="e.g. Monday 10:00 AM"
+                          className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              if (newSlotLabel.trim()) {
+                                setFormData({ ...formData, slots: [...formData.slots, newSlotLabel.trim()] })
+                                setNewSlotLabel('')
+                              }
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (newSlotLabel.trim()) {
+                              setFormData({ ...formData, slots: [...formData.slots, newSlotLabel.trim()] })
+                              setNewSlotLabel('')
+                            }
+                          }}
+                          className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-4 py-2.5 rounded-xl text-sm transition-colors"
+                        >
+                          Add Slot
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Deal Image</label>

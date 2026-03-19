@@ -1,21 +1,26 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { CheckCircle, ArrowLeft, MapPin, Clock } from 'lucide-react'
+import { CheckCircle, ArrowLeft, MapPin, Clock, XCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { getDeal, createVoucher } from '@/lib/queries'
 import { Deal, Voucher } from '@/lib/types'
 import QRCodeImage from '@/components/QRCodeImage'
 
-export default function VoucherPage() {
+function VoucherContent() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const slotId = searchParams.get('slot')
+
   const [deal, setDeal] = useState<Deal | null>(null)
   const [voucher, setVoucher] = useState<Voucher | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [cancelling, setCancelling] = useState(false)
+  const [confirmCancel, setConfirmCancel] = useState(false)
 
   useEffect(() => {
     const init = async () => {
@@ -45,10 +50,10 @@ export default function VoucherPage() {
         setVoucher(existing as Voucher)
       } else {
         try {
-          const newVoucher = await createVoucher(params.id as string, user.id)
+          const newVoucher = await createVoucher(params.id as string, user.id, slotId ?? null)
           setVoucher(newVoucher)
         } catch (err) {
-          setError('Failed to create voucher. Please try again.')
+          setError(err instanceof Error ? err.message : 'Failed to create voucher. Please try again.')
         }
       }
 
@@ -56,7 +61,35 @@ export default function VoucherPage() {
     }
 
     init()
-  }, [params.id, router])
+  }, [params.id, router, slotId])
+
+  const handleCancelVoucher = async () => {
+    if (!voucher || !deal) return
+    setCancelling(true)
+
+    const { error } = await supabase.from('vouchers').delete().eq('id', voucher.id)
+
+    if (!error) {
+      // Decrement vouchers_sold so the spot opens back up
+      const { data: dealData } = await supabase
+        .from('deals')
+        .select('vouchers_sold')
+        .eq('id', deal.id)
+        .single()
+
+      if (dealData && dealData.vouchers_sold > 0) {
+        await supabase
+          .from('deals')
+          .update({ vouchers_sold: dealData.vouchers_sold - 1 })
+          .eq('id', deal.id)
+      }
+
+      router.push(`/deals/${deal.id}`)
+    } else {
+      setCancelling(false)
+      setConfirmCancel(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -73,7 +106,9 @@ export default function VoucherPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center max-w-sm mx-auto px-4">
-          <div className="text-5xl mb-4">❌</div>
+          <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <XCircle className="w-8 h-8 text-red-400" />
+          </div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">Something went wrong</h2>
           <p className="text-gray-500 mb-6">{error}</p>
           <Link href="/deals" className="text-orange-500 font-semibold">Back to deals</Link>
@@ -84,7 +119,10 @@ export default function VoucherPage() {
 
   if (!deal || !voucher) return null
 
-  const daysLeft = Math.ceil((new Date(deal.expiration_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+  const expiryDate = voucher.expires_at
+    ? new Date(voucher.expires_at)
+    : new Date(deal.expiration_date)
+  const daysLeft = Math.ceil((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-pink-50 py-12 px-4">
@@ -148,9 +186,9 @@ export default function VoucherPage() {
 
             <div className="text-center pt-2">
               <p className="text-xs text-gray-400">
-                Valid until{' '}
+                {voucher.expires_at ? 'Expires' : 'Valid until'}{' '}
                 <strong className="text-gray-600">
-                  {new Date(deal.expiration_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  {expiryDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                 </strong>
               </p>
             </div>
@@ -161,9 +199,58 @@ export default function VoucherPage() {
             >
               View My Vouchers
             </Link>
+
+            {/* Cancel voucher */}
+            {voucher.status === 'active' && (
+              <div>
+                {!confirmCancel ? (
+                  <button
+                    onClick={() => setConfirmCancel(true)}
+                    className="w-full text-sm text-gray-400 hover:text-red-500 transition-colors py-2"
+                  >
+                    Cancel this voucher
+                  </button>
+                ) : (
+                  <div className="bg-red-50 rounded-xl p-4">
+                    <p className="text-sm text-red-700 font-medium mb-3 text-center">
+                      Cancel voucher? The spot will open back up.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setConfirmCancel(false)}
+                        className="flex-1 px-4 py-2 rounded-xl text-sm font-semibold bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                      >
+                        Keep Voucher
+                      </button>
+                      <button
+                        onClick={handleCancelVoucher}
+                        disabled={cancelling}
+                        className="flex-1 px-4 py-2 rounded-xl text-sm font-semibold bg-red-500 hover:bg-red-600 disabled:opacity-60 text-white transition-colors"
+                      >
+                        {cancelling ? 'Cancelling...' : 'Yes, Cancel'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
     </div>
+  )
+}
+
+import { Suspense } from 'react'
+
+export default function VoucherPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500" />
+      </div>
+    }>
+      <VoucherContent />
+    </Suspense>
   )
 }

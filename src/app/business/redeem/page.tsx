@@ -3,10 +3,13 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react'
+import dynamic from 'next/dynamic'
+import { ArrowLeft, CheckCircle, AlertCircle, Lock, Camera, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { getMyBusiness } from '@/lib/queries'
 import { Business } from '@/lib/types'
+
+const QRScanner = dynamic(() => import('@/components/QRScanner'), { ssr: false })
 
 type RedeemResult =
   | { type: 'success'; dealTitle: string }
@@ -20,6 +23,8 @@ export default function RedeemPage() {
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<RedeemResult | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
+  const [scanMode, setScanMode] = useState(false)
+  const [scanError, setScanError] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -46,16 +51,18 @@ export default function RedeemPage() {
     })
   }, [router])
 
-  const handleRedeem = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const redeemCode = async (rawCode: string) => {
     if (!business || !userId) return
+    const trimmed = rawCode.toUpperCase().trim()
+    if (!trimmed) return
+
     setSubmitting(true)
     setResult(null)
 
     const { data: voucher, error } = await supabase
       .from('vouchers')
       .select('*, deal:deals(*, business:businesses(*))')
-      .eq('qr_code', code.toUpperCase().trim())
+      .eq('qr_code', trimmed)
       .maybeSingle()
 
     if (error || !voucher) {
@@ -88,9 +95,21 @@ export default function RedeemPage() {
     } else {
       setResult({ type: 'success', dealTitle: deal.title })
       setCode('')
+      setScanMode(false)
     }
 
     setSubmitting(false)
+  }
+
+  const handleRedeem = async (e: React.FormEvent) => {
+    e.preventDefault()
+    await redeemCode(code)
+  }
+
+  const handleQRScan = async (scannedCode: string) => {
+    setScanMode(false)
+    setCode(scannedCode)
+    await redeemCode(scannedCode)
   }
 
   if (loading) {
@@ -105,7 +124,9 @@ export default function RedeemPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center max-w-sm mx-auto px-4">
-          <div className="text-5xl mb-4">🔒</div>
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Lock className="w-8 h-8 text-gray-400" />
+          </div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">Access Restricted</h2>
           <p className="text-gray-500 mb-6">Your business must be approved to redeem vouchers.</p>
           <Link href="/business/dashboard" className="text-orange-500 font-semibold">Back to dashboard</Link>
@@ -130,7 +151,49 @@ export default function RedeemPage() {
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
           <h2 className="font-bold text-gray-900 text-lg mb-2">Enter Voucher Code</h2>
-          <p className="text-gray-500 text-sm mb-6">Type the code shown on the customer&apos;s voucher (e.g. ARUBA-XY23Z1)</p>
+          <p className="text-gray-500 text-sm mb-6">Scan the customer&apos;s QR code or type the code manually</p>
+
+          {/* QR Scanner */}
+          {scanMode && (
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium text-gray-700">Point camera at QR code</p>
+                <button
+                  type="button"
+                  onClick={() => { setScanMode(false); setScanError(null) }}
+                  className="flex items-center gap-1 text-gray-500 hover:text-gray-700 text-sm"
+                >
+                  <X className="w-4 h-4" />
+                  Cancel
+                </button>
+              </div>
+              <QRScanner
+                onScan={handleQRScan}
+                onError={(err) => { setScanError(err); setScanMode(false) }}
+              />
+              {scanError && (
+                <p className="text-sm text-red-600 mt-2">{scanError}</p>
+              )}
+            </div>
+          )}
+
+          {/* Scan button */}
+          {!scanMode && (
+            <button
+              type="button"
+              onClick={() => { setScanMode(true); setScanError(null); setResult(null) }}
+              className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-orange-300 hover:border-orange-400 bg-orange-50 hover:bg-orange-100 text-orange-600 font-semibold py-4 rounded-xl transition-colors mb-4"
+            >
+              <Camera className="w-5 h-5" />
+              Scan QR Code with Camera
+            </button>
+          )}
+
+          <div className="relative flex items-center gap-3 mb-4">
+            <div className="flex-1 h-px bg-gray-200" />
+            <span className="text-xs text-gray-400 font-medium">or enter code manually</span>
+            <div className="flex-1 h-px bg-gray-200" />
+          </div>
 
           <form onSubmit={handleRedeem} className="space-y-4">
             <input

@@ -132,7 +132,9 @@ export default function DashboardPage() {
         <h2 className="text-xl font-bold text-gray-900 mb-4">Active Vouchers</h2>
         {activeVouchers.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center mb-10">
-            <div className="text-4xl mb-3">🎫</div>
+            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <QrCode className="w-6 h-6 text-gray-400" />
+            </div>
             <p className="text-gray-500">No active vouchers yet.</p>
             <Link href="/deals" className="text-orange-500 hover:text-orange-600 font-semibold text-sm mt-2 inline-block">
               Browse deals →

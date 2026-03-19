@@ -1,14 +1,14 @@
 import Link from 'next/link'
-import { Search, ArrowRight, Star, TrendingUp, Shield, Smartphone } from 'lucide-react'
+import { Search, ArrowRight, Star, TrendingUp, Shield, Smartphone, Utensils, Waves, Sparkles, Music, Dumbbell } from 'lucide-react'
 import DealCard from '@/components/DealCard'
 import { mockDeals } from '@/lib/mock-data'
 
 const categories = [
-  { name: 'Restaurants', emoji: '🍽️', color: 'bg-orange-50 hover:bg-orange-100 border-orange-100', count: '24 deals' },
-  { name: 'Activities', emoji: '🤿', color: 'bg-blue-50 hover:bg-blue-100 border-blue-100', count: '18 deals' },
-  { name: 'Spa & Wellness', emoji: '💆', color: 'bg-pink-50 hover:bg-pink-100 border-pink-100', count: '12 deals' },
-  { name: 'Nightlife', emoji: '🎵', color: 'bg-purple-50 hover:bg-purple-100 border-purple-100', count: '8 deals' },
-  { name: 'Fitness', emoji: '💪', color: 'bg-green-50 hover:bg-green-100 border-green-100', count: '10 deals' },
+  { name: 'Restaurants', Icon: Utensils, color: 'bg-orange-50 hover:bg-orange-100 border-orange-100', iconColor: 'text-orange-500', count: '24 deals' },
+  { name: 'Activities', Icon: Waves, color: 'bg-blue-50 hover:bg-blue-100 border-blue-100', iconColor: 'text-blue-500', count: '18 deals' },
+  { name: 'Spa & Wellness', Icon: Sparkles, color: 'bg-pink-50 hover:bg-pink-100 border-pink-100', iconColor: 'text-pink-500', count: '12 deals' },
+  { name: 'Nightlife', Icon: Music, color: 'bg-purple-50 hover:bg-purple-100 border-purple-100', iconColor: 'text-purple-500', count: '8 deals' },
+  { name: 'Fitness', Icon: Dumbbell, color: 'bg-green-50 hover:bg-green-100 border-green-100', iconColor: 'text-green-500', count: '10 deals' },
 ]
 
 export default function HomePage() {
@@ -90,17 +90,22 @@ export default function HomePage() {
           </div>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          {categories.map((cat) => (
-            <Link
-              key={cat.name}
-              href={`/deals?category=${encodeURIComponent(cat.name)}`}
-              className={`${cat.color} border rounded-2xl p-5 text-center transition-all duration-200 hover:shadow-md hover:-translate-y-0.5`}
-            >
-              <div className="text-3xl mb-2">{cat.emoji}</div>
-              <div className="font-semibold text-gray-900 text-sm">{cat.name}</div>
-              <div className="text-gray-500 text-xs mt-1">{cat.count}</div>
-            </Link>
-          ))}
+          {categories.map((cat) => {
+            const CatIcon = cat.Icon
+            return (
+              <Link
+                key={cat.name}
+                href={`/deals?category=${encodeURIComponent(cat.name)}`}
+                className={`${cat.color} border rounded-2xl p-5 text-center transition-all duration-200 hover:shadow-md hover:-translate-y-0.5`}
+              >
+                <div className="flex justify-center mb-2">
+                  <CatIcon className={`w-8 h-8 ${cat.iconColor}`} />
+                </div>
+                <div className="font-semibold text-gray-900 text-sm">{cat.name}</div>
+                <div className="text-gray-500 text-xs mt-1">{cat.count}</div>
+              </Link>
+            )
+          })}
         </div>
       </section>
 

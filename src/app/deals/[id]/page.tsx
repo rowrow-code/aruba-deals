@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Star, MapPin, Clock, CheckCircle, ArrowLeft, Share2, Heart, Users } from 'lucide-react'
-import { getDeal, getDealReviews, submitReview } from '@/lib/queries'
+import { Star, MapPin, Clock, CheckCircle, ArrowLeft, Share2, Heart, Users, Search } from 'lucide-react'
+import { getDeal, getDealReviews, submitReview, incrementDealViews } from '@/lib/queries'
 import { supabase } from '@/lib/supabase'
 import { Deal, Review } from '@/lib/types'
 
@@ -41,6 +41,8 @@ export default function DealDetailPage() {
     ]).then(async ([dealData, reviewsData, { data: { user } }]) => {
       setDeal(dealData)
       setReviews(reviewsData)
+      // Increment view count (fire-and-forget)
+      incrementDealViews(dealId).catch(() => {})
 
       if (user) {
         setUserId(user.id)
@@ -135,7 +137,9 @@ export default function DealDetailPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-6xl mb-4">🔍</div>
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Search className="w-8 h-8 text-gray-400" />
+          </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Deal not found</h2>
           <Link href="/deals" className="text-orange-500 hover:text-orange-600 font-medium">
             Browse all deals

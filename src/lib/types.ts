@@ -13,6 +13,15 @@ export interface Business {
   created_at: string
 }
 
+export interface BookingSlot {
+  id: string
+  deal_id: string
+  slot_label: string
+  max_capacity: number
+  is_active: boolean
+  created_at: string
+}
+
 export interface Deal {
   id: string
   business_id: string
@@ -29,6 +38,9 @@ export interface Deal {
   vouchers_sold: number
   is_active: boolean
   created_at: string
+  views?: number
+  voucher_expiry_hours?: number | null
+  time_slot_enabled?: boolean
   business?: Business
 }
 
@@ -39,6 +51,9 @@ export interface Voucher {
   qr_code: string
   status: 'active' | 'used' | 'expired'
   created_at: string
+  expires_at?: string | null
+  booking_slot_id?: string | null
+  booking_slot?: BookingSlot
   deal?: Deal
 }
 
@@ -58,4 +73,13 @@ export interface Profile {
   full_name: string
   role: 'customer' | 'business' | 'admin'
   created_at: string
+}
+
+export interface SupportMessage {
+  id: string
+  business_id: string
+  message: string
+  is_read: boolean
+  created_at: string
+  business?: Business
 }
