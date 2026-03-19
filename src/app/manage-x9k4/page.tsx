@@ -181,12 +181,20 @@ function AdminContent() {
 
   const handleDeleteBusiness = async (businessId: string) => {
     setDeletingBusinessId(businessId)
-    // Delete all deals for this business first
-    await supabase.from('deals').delete().eq('business_id', businessId)
-    // Then delete the business
-    const { error } = await supabase.from('businesses').delete().eq('id', businessId)
-    if (!error) {
-      setBusinesses((prev) => prev.filter((b) => b.id !== businessId))
+    try {
+      const res = await fetch('/api/admin-delete-deal', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ businessId }),
+      })
+      if (res.ok) {
+        setBusinesses((prev) => prev.filter((b) => b.id !== businessId))
+      } else {
+        const err = await res.json()
+        alert(`Delete failed: ${err.error || 'Unknown error'}`)
+      }
+    } catch {
+      alert('Delete failed: network error')
     }
     setConfirmDeleteBusinessId(null)
     setDeletingBusinessId(null)
@@ -194,9 +202,20 @@ function AdminContent() {
 
   const handleDeleteDeal = async (dealId: string) => {
     setDeletingDealId(dealId)
-    const { error } = await supabase.from('deals').delete().eq('id', dealId)
-    if (!error) {
-      setAllDeals((prev) => prev.filter((d) => d.id !== dealId))
+    try {
+      const res = await fetch('/api/admin-delete-deal', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dealId }),
+      })
+      if (res.ok) {
+        setAllDeals((prev) => prev.filter((d) => d.id !== dealId))
+      } else {
+        const err = await res.json()
+        alert(`Delete failed: ${err.error || 'Unknown error'}`)
+      }
+    } catch {
+      alert('Delete failed: network error')
     }
     setConfirmDeleteDealId(null)
     setDeletingDealId(null)
