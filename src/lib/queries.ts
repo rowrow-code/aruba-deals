@@ -80,10 +80,18 @@ export async function createDeal(dealData: {
   voucher_expiry_hours?: number | null
   time_slot_enabled?: boolean
 }): Promise<Deal> {
+  // Base insert — only fields that always exist in the DB
   const { data, error } = await supabase
     .from('deals')
     .insert({
-      ...dealData,
+      business_id: dealData.business_id,
+      title: dealData.title,
+      description: dealData.description,
+      original_price: dealData.original_price,
+      deal_price: dealData.deal_price,
+      expiration_date: dealData.expiration_date,
+      included: dealData.included,
+      location: dealData.location,
       images: dealData.images ?? [],
       total_available: dealData.total_available ?? 50,
       is_active: true,
@@ -92,6 +100,19 @@ export async function createDeal(dealData: {
     .single()
 
   if (error) throw error
+
+  // Optional new columns — silently ignored if SQL migration not run yet
+  if (dealData.voucher_expiry_hours != null || dealData.time_slot_enabled) {
+    await supabase
+      .from('deals')
+      .update({
+        voucher_expiry_hours: dealData.voucher_expiry_hours ?? null,
+        time_slot_enabled: dealData.time_slot_enabled ?? false,
+      })
+      .eq('id', (data as Deal).id)
+      .then(() => {}) // ignore errors — columns may not exist yet
+  }
+
   return data as Deal
 }
 

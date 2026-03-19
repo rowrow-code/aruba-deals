@@ -13,7 +13,9 @@ function ImageUploader({ value, onChange }: { value: string; onChange: (url: str
   const [dragging, setDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [urlInput, setUrlInput] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+  const active = !value
 
   const upload = async (file: File) => {
     if (!file.type.startsWith('image/')) {
@@ -31,13 +33,32 @@ function ImageUploader({ value, onChange }: { value: string; onChange: (url: str
       if (uploadError) throw uploadError
       const { data } = supabase.storage.from('deal-images').getPublicUrl(filename)
       onChange(data.publicUrl)
-    } catch (err) {
-      setError('Upload failed. Try pasting an image URL instead.')
-      console.error(err)
+      setError(null)
+    } catch (err: any) {
+      console.error('Upload error:', err)
+      setError(`Upload failed: ${err?.message || 'storage error'}. Paste a URL below instead.`)
     } finally {
       setUploading(false)
     }
   }
+
+  // Global paste listener — works even without focusing the drop zone
+  useEffect(() => {
+    if (!active) return
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      const file = e.clipboardData?.files[0]
+      if (file && file.type.startsWith('image/')) {
+        upload(file)
+        return
+      }
+      const text = e.clipboardData?.getData('text') || ''
+      if (text.match(/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|avif|svg)/i) || text.match(/^https?:\/\//)) {
+        onChange(text.trim())
+      }
+    }
+    document.addEventListener('paste', handleGlobalPaste)
+    return () => document.removeEventListener('paste', handleGlobalPaste)
+  }, [active])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -46,16 +67,16 @@ function ImageUploader({ value, onChange }: { value: string; onChange: (url: str
     if (file) upload(file)
   }, [])
 
-  const handlePaste = useCallback((e: React.ClipboardEvent) => {
-    const file = e.clipboardData.files[0]
-    if (file) {
-      upload(file)
-      return
+  const applyUrl = () => {
+    const trimmed = urlInput.trim()
+    if (trimmed.startsWith('http')) {
+      onChange(trimmed)
+      setUrlInput('')
+      setError(null)
+    } else if (trimmed) {
+      setError('Please enter a valid image URL starting with http')
     }
-    // If pasting a URL string
-    const text = e.clipboardData.getData('text')
-    if (text.startsWith('http')) onChange(text)
-  }, [])
+  }
 
   return (
     <div>
@@ -64,58 +85,77 @@ function ImageUploader({ value, onChange }: { value: string; onChange: (url: str
           <img src={value} alt="Deal preview" className="w-full h-48 object-cover rounded-xl border border-gray-200" />
           <button
             type="button"
-            onClick={() => onChange('')}
+            onClick={() => { onChange(''); setError(null) }}
             className="absolute top-2 right-2 bg-white rounded-full p-1.5 shadow-md hover:bg-red-50 transition-colors"
           >
             <X className="w-4 h-4 text-gray-600" />
           </button>
         </div>
       ) : (
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={handleDrop}
-          onPaste={handlePaste}
-          onClick={() => inputRef.current?.click()}
-          tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && inputRef.current?.click()}
-          className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors outline-none focus:ring-2 focus:ring-orange-500 ${
-            dragging ? 'border-orange-400 bg-orange-50' : 'border-gray-200 hover:border-orange-300 hover:bg-orange-50/40'
-          }`}
-        >
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
-          />
-          {uploading ? (
-            <div className="flex flex-col items-center gap-2">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500" />
-              <p className="text-sm text-gray-500">Uploading...</p>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-12 h-12 bg-orange-50 rounded-full flex items-center justify-center">
-                <Upload className="w-6 h-6 text-orange-400" />
+        <>
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={handleDrop}
+            onClick={() => inputRef.current?.click()}
+            className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
+              dragging ? 'border-orange-400 bg-orange-50' : 'border-gray-200 hover:border-orange-300 hover:bg-orange-50/40'
+            }`}
+          >
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
+            />
+            {uploading ? (
+              <div className="flex flex-col items-center gap-2">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500" />
+                <p className="text-sm text-gray-500">Uploading...</p>
               </div>
-              <p className="text-sm font-medium text-gray-700">Drop image here or click to browse</p>
-              <p className="text-xs text-gray-400">You can also paste an image or a URL (Ctrl+V)</p>
-            </div>
-          )}
-        </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-12 h-12 bg-orange-50 rounded-full flex items-center justify-center">
+                  <Upload className="w-6 h-6 text-orange-400" />
+                </div>
+                <p className="text-sm font-medium text-gray-700">Click to browse or drag & drop</p>
+                <p className="text-xs text-gray-400">You can also press Ctrl+V anywhere to paste an image</p>
+              </div>
+            )}
+          </div>
+
+          {/* URL input */}
+          <div className="mt-2 flex gap-2">
+            <input
+              type="text"
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              onPaste={(e) => {
+                const text = e.clipboardData.getData('text')
+                if (text.startsWith('http')) {
+                  e.preventDefault()
+                  onChange(text.trim())
+                  setUrlInput('')
+                }
+              }}
+              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), applyUrl())}
+              placeholder="Or paste an image URL here..."
+              className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            />
+            {urlInput && (
+              <button
+                type="button"
+                onClick={applyUrl}
+                className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition-colors"
+              >
+                Use
+              </button>
+            )}
+          </div>
+        </>
       )}
       {error && <p className="text-xs text-red-500 mt-1.5">{error}</p>}
-      {/* URL fallback */}
-      {!value && (
-        <input
-          type="url"
-          placeholder="Or paste an image URL..."
-          onChange={(e) => e.target.value && onChange(e.target.value)}
-          className="mt-2 w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-        />
-      )}
     </div>
   )
 }
