@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Eye, EyeOff, ArrowLeft, CheckCircle, AlertTriangle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
@@ -54,9 +55,7 @@ export default function SignupPage() {
 
         <div className="bg-white rounded-3xl shadow-xl p-8">
           <div className="text-center mb-8">
-            <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-3">
-              <span className="text-white font-bold">AS</span>
-            </div>
+            <Image src="/logo.png" alt="ArubaSave" width={56} height={56} className="rounded-2xl mx-auto mb-3" />
             <h1 className="text-2xl font-bold text-gray-900">Create your account</h1>
             <p className="text-gray-500 mt-1">Start saving on the best Aruba deals</p>
           </div>

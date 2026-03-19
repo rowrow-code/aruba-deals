@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { Menu, X, MapPin } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -45,9 +46,7 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-pink-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">AS</span>
-            </div>
+            <Image src="/logo.png" alt="ArubaSave" width={36} height={36} className="rounded-lg" />
             <span className="font-bold text-xl text-gray-900">
               aruba<span className="text-orange-500">save</span>
             </span>
