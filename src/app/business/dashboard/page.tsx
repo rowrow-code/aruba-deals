@@ -93,39 +93,51 @@ function ImageUploader({ value, onChange }: { value: string; onChange: (url: str
         </div>
       ) : (
         <>
-          <div
-            onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={handleDrop}
-            onClick={() => inputRef.current?.click()}
-            className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
-              dragging ? 'border-orange-400 bg-orange-50' : 'border-gray-200 hover:border-orange-300 hover:bg-orange-50/40'
-            }`}
-          >
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
-            />
-            {uploading ? (
-              <div className="flex flex-col items-center gap-2">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500" />
-                <p className="text-sm text-gray-500">Uploading...</p>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-2">
-                <div className="w-12 h-12 bg-orange-50 rounded-full flex items-center justify-center">
-                  <Upload className="w-6 h-6 text-orange-400" />
+          {uploading ? (
+            <div className="border-2 border-dashed border-orange-300 rounded-xl p-8 text-center bg-orange-50">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-2" />
+              <p className="text-sm text-gray-500">Uploading...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {/* Option 1: Upload file */}
+              <div
+                onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={handleDrop}
+                onClick={() => inputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-colors ${
+                  dragging ? 'border-orange-400 bg-orange-50' : 'border-gray-200 hover:border-orange-300 hover:bg-orange-50/40'
+                }`}
+              >
+                <input
+                  ref={inputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
+                />
+                <div className="w-10 h-10 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <Upload className="w-5 h-5 text-orange-400" />
                 </div>
-                <p className="text-sm font-medium text-gray-700">Click to browse or drag & drop</p>
-                <p className="text-xs text-gray-400">You can also press Ctrl+V anywhere to paste an image</p>
+                <p className="text-sm font-medium text-gray-700">Upload image</p>
+                <p className="text-xs text-gray-400 mt-0.5">Click or drag & drop</p>
               </div>
-            )}
-          </div>
 
-          {/* URL input */}
+              {/* Option 2: Paste URL */}
+              <div className="border-2 border-dashed border-gray-200 rounded-xl p-5 text-center">
+                <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                  </svg>
+                </div>
+                <p className="text-sm font-medium text-gray-700">Paste URL</p>
+                <p className="text-xs text-gray-400 mt-0.5">Ctrl+V or type below</p>
+              </div>
+            </div>
+          )}
+
+          {/* URL input — always visible */}
           <div className="mt-2 flex gap-2">
             <input
               type="text"
@@ -140,7 +152,7 @@ function ImageUploader({ value, onChange }: { value: string; onChange: (url: str
                 }
               }}
               onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), applyUrl())}
-              placeholder="Or paste an image URL here..."
+              placeholder="Paste image URL here (Ctrl+V)..."
               className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             />
             {urlInput && (
