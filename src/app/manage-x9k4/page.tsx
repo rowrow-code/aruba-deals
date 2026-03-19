@@ -179,14 +179,22 @@ function AdminContent() {
     setActionLoading(null)
   }
 
+  const adminFetch = async (body: object) => {
+    const { data: { session } } = await supabase.auth.getSession()
+    return fetch('/api/admin-delete-deal', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token ?? ''}`,
+      },
+      body: JSON.stringify(body),
+    })
+  }
+
   const handleDeleteBusiness = async (businessId: string) => {
     setDeletingBusinessId(businessId)
     try {
-      const res = await fetch('/api/admin-delete-deal', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ businessId }),
-      })
+      const res = await adminFetch({ businessId })
       if (res.ok) {
         setBusinesses((prev) => prev.filter((b) => b.id !== businessId))
       } else {
@@ -203,11 +211,7 @@ function AdminContent() {
   const handleDeleteDeal = async (dealId: string) => {
     setDeletingDealId(dealId)
     try {
-      const res = await fetch('/api/admin-delete-deal', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dealId }),
-      })
+      const res = await adminFetch({ dealId })
       if (res.ok) {
         setAllDeals((prev) => prev.filter((d) => d.id !== dealId))
       } else {

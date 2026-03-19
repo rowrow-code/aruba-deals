@@ -1,12 +1,21 @@
 import { createClient } from '@supabase/supabase-js'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function DELETE(req: NextRequest) {
-  // Validate session
-  const supabaseAuth = await createSupabaseServerClient()
-  const { data: { user } } = await supabaseAuth.auth.getUser()
-  if (!user) {
+  const authHeader = req.headers.get('Authorization')
+  const token = authHeader?.replace('Bearer ', '')
+  if (!token) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const admin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  // Verify the token and get the user
+  const { data: { user }, error: authError } = await admin.auth.getUser(token)
+  if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -14,11 +23,6 @@ export async function DELETE(req: NextRequest) {
   if (!dealId) {
     return NextResponse.json({ error: 'No dealId provided' }, { status: 400 })
   }
-
-  const admin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
 
   // Verify the deal belongs to a business owned by this user
   const { data: deal } = await admin
@@ -36,7 +40,7 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  // Delete related records first to avoid FK constraint errors
+  // Cascade delete related records first
   await admin.from('booking_slots').delete().eq('deal_id', dealId)
   await admin.from('vouchers').delete().eq('deal_id', dealId)
   await admin.from('reviews').delete().eq('deal_id', dealId)

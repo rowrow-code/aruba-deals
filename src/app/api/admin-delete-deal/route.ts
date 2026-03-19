@@ -1,17 +1,26 @@
 import { createClient } from '@supabase/supabase-js'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function DELETE(req: NextRequest) {
-  // Validate session
-  const supabaseAuth = await createSupabaseServerClient()
-  const { data: { user } } = await supabaseAuth.auth.getUser()
-  if (!user) {
+  const authHeader = req.headers.get('Authorization')
+  const token = authHeader?.replace('Bearer ', '')
+  if (!token) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const admin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  // Verify the token and get the user
+  const { data: { user }, error: authError } = await admin.auth.getUser(token)
+  if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   // Check admin role
-  const { data: profile } = await supabaseAuth
+  const { data: profile } = await admin
     .from('profiles')
     .select('role')
     .eq('id', user.id)
@@ -23,13 +32,8 @@ export async function DELETE(req: NextRequest) {
 
   const { dealId, businessId } = await req.json()
 
-  const admin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-
   if (businessId) {
-    // Delete entire business: remove all deals and their related records first
+    // Delete entire business: cascade delete all deals and related records
     const { data: deals } = await admin
       .from('deals')
       .select('id')
