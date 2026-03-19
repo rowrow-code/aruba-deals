@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing Supabase env vars' }, { status: 500 })
     }
 
-    // Validate session via Bearer token (cookies are unreliable in Vercel API routes)
+    // Validate session via Bearer token
     const authHeader = req.headers.get('Authorization')
     const token = authHeader?.replace('Bearer ', '')
     if (!token) {
@@ -20,6 +20,16 @@ export async function POST(req: NextRequest) {
     const { data: { user }, error: authError } = await admin.auth.getUser(token)
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Ensure bucket exists and is public
+    const { data: buckets } = await admin.storage.listBuckets()
+    const bucketExists = buckets?.some((b: any) => b.id === 'deal-images')
+
+    if (!bucketExists) {
+      await admin.storage.createBucket('deal-images', { public: true })
+    } else {
+      await admin.storage.updateBucket('deal-images', { public: true })
     }
 
     const formData = await req.formData()
