@@ -197,6 +197,7 @@ function AdminContent() {
       const res = await adminFetch({ businessId })
       if (res.ok) {
         setBusinesses((prev) => prev.filter((b) => b.id !== businessId))
+        setAllDeals((prev) => prev.filter((d) => d.business_id !== businessId))
       } else {
         const err = await res.json()
         alert(`Delete failed: ${err.error || 'Unknown error'}`)

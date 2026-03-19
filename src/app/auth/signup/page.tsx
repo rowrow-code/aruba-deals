@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Eye, EyeOff, ArrowLeft, CheckCircle, Mail } from 'lucide-react'
+import { Eye, EyeOff, ArrowLeft, CheckCircle, AlertTriangle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 export default function SignupPage() {
@@ -12,21 +12,13 @@ export default function SignupPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
-  const [confirmed, setConfirmed] = useState(false)
-  const [resendStatus, setResendStatus] = useState<string | null>(null)
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setAuthError(null)
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
-      },
-    })
+    const { data, error } = await supabase.auth.signUp({ email, password })
 
     if (error) {
       setAuthError(error.message)
@@ -46,15 +38,10 @@ export default function SignupPage() {
     if (data.session) {
       window.location.href = '/dashboard'
     } else {
-      setConfirmed(true)
-      setLoading(false)
+      // No session means Supabase email confirmation is still on —
+      // redirect to login so user can try once confirmation is disabled.
+      window.location.href = '/auth/login'
     }
-  }
-
-  const handleResend = async () => {
-    setResendStatus(null)
-    const { error } = await supabase.auth.resend({ type: 'signup', email })
-    setResendStatus(error ? 'Failed to resend. Try again.' : 'Sent! Check your inbox.')
   }
 
   return (
@@ -66,31 +53,6 @@ export default function SignupPage() {
         </Link>
 
         <div className="bg-white rounded-3xl shadow-xl p-8">
-          {confirmed ? (
-            <div className="text-center py-4">
-              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Mail className="w-8 h-8 text-orange-500" />
-              </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Check your inbox</h2>
-              <p className="text-gray-500 text-sm mb-1">We sent a confirmation link to</p>
-              <p className="text-gray-800 font-semibold mb-6">{email}</p>
-              {resendStatus && (
-                <p className={`text-sm mb-4 ${resendStatus.startsWith('Sent') ? 'text-green-600' : 'text-red-600'}`}>
-                  {resendStatus}
-                </p>
-              )}
-              <button
-                onClick={handleResend}
-                className="w-full border border-orange-300 text-orange-600 hover:bg-orange-50 font-semibold py-3 rounded-xl transition-colors mb-3"
-              >
-                Resend email
-              </button>
-              <Link href="/auth/login" className="block text-center text-gray-500 text-sm hover:text-gray-700">
-                Back to login
-              </Link>
-            </div>
-          ) : (
-          <>
           <div className="text-center mb-8">
             <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-3">
               <span className="text-white font-bold">AS</span>
@@ -100,7 +62,7 @@ export default function SignupPage() {
           </div>
 
           {/* Benefits */}
-          <div className="bg-orange-50 rounded-xl p-4 mb-6">
+          <div className="bg-orange-50 rounded-xl p-4 mb-4">
             <ul className="space-y-2">
               {['Free to sign up', 'Instant digital vouchers', 'Access to exclusive deals'].map((benefit) => (
                 <li key={benefit} className="flex items-center gap-2 text-sm text-orange-700">
@@ -109,6 +71,14 @@ export default function SignupPage() {
                 </li>
               ))}
             </ul>
+          </div>
+
+          {/* Password warning notice */}
+          <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5">
+            <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-700">
+              <strong>Remember your password.</strong> Password recovery is not available — if you forget it, you will not be able to log back in.
+            </p>
           </div>
 
           <form onSubmit={handleSignup} className="space-y-4">
@@ -179,8 +149,6 @@ export default function SignupPage() {
               Log in
             </Link>
           </p>
-          </>
-          )}
         </div>
       </div>
     </div>

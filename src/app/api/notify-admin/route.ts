@@ -10,10 +10,45 @@ function generateToken(secret: string, businessId: string, action: string): stri
 
 export async function POST(request: Request) {
   const resend = new Resend(process.env.RESEND_API_KEY)
-  const { businessId, businessName, category, location, contactName, contactEmail, phone } = await request.json()
+  const body = await request.json()
+  const { businessId, businessName, category, location, contactName, contactEmail, phone, supportMessage } = body
 
   const secret = process.env.ADMIN_ACTION_SECRET
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://aruba-deals.vercel.app'
+
+  // Handle support message notifications
+  if (supportMessage) {
+    try {
+      await resend.emails.send({
+        from: 'ArubaSave <onboarding@resend.dev>',
+        to: 'storeroro07@gmail.com',
+        subject: `Support Message from ${businessName}`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #f97316, #ec4899); padding: 24px; border-radius: 12px 12px 0 0;">
+              <h1 style="color: white; margin: 0; font-size: 24px;">New Support Message</h1>
+              <p style="color: rgba(255,255,255,0.8); margin: 8px 0 0 0;">ArubaSave — Business Dashboard</p>
+            </div>
+            <div style="background: #f9fafb; padding: 24px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb;">
+              <p style="color: #6b7280; font-size: 14px; margin: 0 0 8px 0;">From: <strong style="color: #111827;">${businessName}</strong></p>
+              <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-top: 12px;">
+                <p style="color: #111827; font-size: 15px; line-height: 1.6; margin: 0;">${supportMessage}</p>
+              </div>
+              <div style="margin-top: 20px; text-align: center;">
+                <a href="${siteUrl}/manage-x9k4?tab=messages" style="display: inline-block; background: #f97316; color: white; font-weight: 700; padding: 12px 32px; border-radius: 10px; text-decoration: none;">
+                  View in Admin Dashboard
+                </a>
+              </div>
+            </div>
+          </div>
+        `,
+      })
+      return NextResponse.json({ success: true })
+    } catch (error) {
+      console.error('Email error:', error)
+      return NextResponse.json({ success: false, error: String(error) }, { status: 500 })
+    }
+  }
 
   let actionButtons = ''
   if (secret && businessId) {

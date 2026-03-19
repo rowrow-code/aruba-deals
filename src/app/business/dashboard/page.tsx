@@ -320,6 +320,11 @@ export default function BusinessDashboardPage() {
     if (!error) {
       setSupportSent(true)
       setSupportMessage('')
+      fetch('/api/notify-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ supportMessage: supportMessage, businessName: business.name }),
+      }).catch(() => {})
     }
     setSendingSupport(false)
   }

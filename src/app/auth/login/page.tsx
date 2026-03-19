@@ -2,7 +2,7 @@
 
 import { useState, Suspense } from 'react'
 import Link from 'next/link'
-import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
+import { Eye, EyeOff, ArrowLeft, AlertTriangle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useSearchParams } from 'next/navigation'
 
@@ -12,37 +12,22 @@ function LoginForm() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
-  const [unconfirmed, setUnconfirmed] = useState(false)
-  const [resendStatus, setResendStatus] = useState<string | null>(null)
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') || '/dashboard'
-  const justConfirmed = searchParams.get('confirmed') === '1'
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setAuthError(null)
-    setUnconfirmed(false)
-    setResendStatus(null)
 
     const { error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
-      if (error.message.includes('Email not confirmed')) {
-        setUnconfirmed(true)
-      } else {
-        setAuthError(error.message)
-      }
+      setAuthError(error.message)
       setLoading(false)
     } else {
       window.location.href = redirect
     }
-  }
-
-  const handleResend = async () => {
-    setResendStatus(null)
-    const { error } = await supabase.auth.resend({ type: 'signup', email })
-    setResendStatus(error ? 'Failed to resend. Try again.' : 'Sent! Check your inbox.')
   }
 
   return (
@@ -63,11 +48,13 @@ function LoginForm() {
             <p className="text-gray-500 mt-1">Log in to access your deals</p>
           </div>
 
-          {justConfirmed && (
-            <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm text-green-700 mb-4">
-              Email confirmed! You can now log in.
-            </div>
-          )}
+          {/* Password warning notice */}
+          <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5">
+            <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-700">
+              <strong>Remember your password.</strong> Password recovery is not available — if you forget it, you will not be able to log back in.
+            </p>
+          </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
@@ -102,32 +89,6 @@ function LoginForm() {
                 </button>
               </div>
             </div>
-
-            <div className="flex items-center justify-end">
-              <Link href="/auth/forgot-password" className="text-sm text-orange-500 hover:text-orange-600">
-                Forgot password?
-              </Link>
-            </div>
-
-            {unconfirmed && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
-                <p className="font-semibold mb-1">Please confirm your email first.</p>
-                <p className="mb-2">Check your inbox for the confirmation link.</p>
-                {resendStatus ? (
-                  <p className={resendStatus.startsWith('Sent') ? 'text-green-700 font-medium' : 'text-red-600'}>
-                    {resendStatus}
-                  </p>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleResend}
-                    className="text-amber-700 underline hover:text-amber-900 font-medium"
-                  >
-                    Resend confirmation email
-                  </button>
-                )}
-              </div>
-            )}
 
             {authError && (
               <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600">

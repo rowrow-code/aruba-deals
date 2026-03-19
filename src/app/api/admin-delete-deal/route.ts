@@ -40,8 +40,8 @@ export async function DELETE(req: NextRequest) {
       .eq('business_id', businessId)
 
     for (const deal of deals ?? []) {
-      await admin.from('booking_slots').delete().eq('deal_id', deal.id)
       await admin.from('vouchers').delete().eq('deal_id', deal.id)
+      await admin.from('booking_slots').delete().eq('deal_id', deal.id)
       await admin.from('reviews').delete().eq('deal_id', deal.id)
     }
 
@@ -50,9 +50,9 @@ export async function DELETE(req: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   } else if (dealId) {
-    // Delete single deal and its related records
-    await admin.from('booking_slots').delete().eq('deal_id', dealId)
+    // Delete single deal and its related records (vouchers before booking_slots due to FK)
     await admin.from('vouchers').delete().eq('deal_id', dealId)
+    await admin.from('booking_slots').delete().eq('deal_id', dealId)
     await admin.from('reviews').delete().eq('deal_id', dealId)
 
     const { error } = await admin.from('deals').delete().eq('id', dealId)
