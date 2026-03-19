@@ -1,6 +1,10 @@
+'use client'
+
 import Link from 'next/link'
 import { Star, Clock, MapPin } from 'lucide-react'
 import { Deal } from '@/lib/types'
+
+const FALLBACK = 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800'
 
 interface DealCardProps {
   deal: Deal
@@ -16,9 +20,10 @@ export default function DealCard({ deal }: DealCardProps) {
       {/* Image */}
       <div className="relative overflow-hidden h-52">
         <img
-          src={deal.images[0] || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800'}
+          src={deal.images[0] || FALLBACK}
           alt={deal.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK }}
         />
         <div className="absolute top-3 left-3">
           <span className="bg-orange-500 text-white text-sm font-bold px-3 py-1 rounded-full shadow-lg">
