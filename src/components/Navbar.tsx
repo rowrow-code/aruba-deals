@@ -48,7 +48,7 @@ export default function Navbar() {
           <Link href="/" className="flex items-center space-x-2">
             <Image src="/logo.png" alt="ArubaSave" width={36} height={36} className="rounded-lg" />
             <span className="font-bold text-xl text-gray-900">
-              aruba<span className="text-orange-500">save</span>
+              Aruba<span className="text-orange-500">Save</span>
             </span>
           </Link>
 

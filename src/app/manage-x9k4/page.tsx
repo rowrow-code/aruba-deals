@@ -601,9 +601,26 @@ function AdminContent() {
                         Joined {new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                       </p>
                     </div>
-                    <div className="text-right flex-shrink-0">
-                      <div className="text-lg font-bold text-gray-900">{userVoucherCounts[user.id] || 0}</div>
-                      <div className="text-xs text-gray-500">active vouchers</div>
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      <div className="flex gap-1.5">
+                        {[1, 2, 3].map((slot) => {
+                          const count = userVoucherCounts[user.id] || 0
+                          const filled = slot <= count
+                          return (
+                            <div
+                              key={slot}
+                              className={`w-4 h-4 rounded-full border-2 transition-colors ${
+                                filled
+                                  ? 'bg-orange-500 border-orange-500'
+                                  : 'bg-white border-gray-300'
+                              }`}
+                            />
+                          )
+                        })}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {userVoucherCounts[user.id] || 0}/3 vouchers
+                      </div>
                     </div>
                   </div>
                 ))}

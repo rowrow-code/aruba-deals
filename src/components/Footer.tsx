@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { MapPin, Instagram, Facebook, Twitter } from 'lucide-react'
+import { MapPin, Instagram, Facebook } from 'lucide-react'
 
 export default function Footer() {
   return (
@@ -13,7 +13,7 @@ export default function Footer() {
                 <span className="text-white font-bold text-sm">AS</span>
               </div>
               <span className="font-bold text-xl text-white">
-                aruba<span className="text-orange-500">save</span>
+                Aruba<span className="text-orange-500">Save</span>
               </span>
             </div>
             <p className="text-sm leading-relaxed max-w-xs">
@@ -26,7 +26,6 @@ export default function Footer() {
             <div className="flex gap-4 mt-4">
               <a href="#" className="hover:text-orange-500 transition-colors"><Instagram className="w-5 h-5" /></a>
               <a href="#" className="hover:text-orange-500 transition-colors"><Facebook className="w-5 h-5" /></a>
-              <a href="#" className="hover:text-orange-500 transition-colors"><Twitter className="w-5 h-5" /></a>
             </div>
           </div>
 
@@ -54,10 +53,10 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-gray-800 mt-10 pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm">
-          <p>© 2025 ArubaSave. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} ArubaSave. All rights reserved.</p>
           <div className="flex gap-6">
-            <a href="#" className="hover:text-orange-500 transition-colors">Privacy Policy</a>
-            <a href="#" className="hover:text-orange-500 transition-colors">Terms of Service</a>
+            <Link href="/privacy" className="hover:text-orange-500 transition-colors">Privacy Policy</Link>
+            <Link href="/terms" className="hover:text-orange-500 transition-colors">Terms of Service</Link>
           </div>
         </div>
       </div>
