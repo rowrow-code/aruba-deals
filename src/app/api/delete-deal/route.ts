@@ -36,6 +36,11 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
+  // Delete related records first to avoid FK constraint errors
+  await admin.from('booking_slots').delete().eq('deal_id', dealId)
+  await admin.from('vouchers').delete().eq('deal_id', dealId)
+  await admin.from('reviews').delete().eq('deal_id', dealId)
+
   const { error } = await admin.from('deals').delete().eq('id', dealId)
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
