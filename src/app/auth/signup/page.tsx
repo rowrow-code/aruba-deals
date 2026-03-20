@@ -39,9 +39,7 @@ export default function SignupPage() {
     if (data.session) {
       window.location.href = '/dashboard'
     } else {
-      // No session means Supabase email confirmation is still on —
-      // redirect to login so user can try once confirmation is disabled.
-      window.location.href = '/auth/login'
+      window.location.href = `/auth/check-email?email=${encodeURIComponent(email)}`
     }
   }
 
