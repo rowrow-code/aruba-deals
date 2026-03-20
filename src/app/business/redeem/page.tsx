@@ -80,19 +80,18 @@ export default function RedeemPage() {
       return
     }
 
-    if (voucher.status !== 'active') {
-      setResult({ type: 'error', message: 'This voucher has already been used.' })
-      setSubmitting(false)
-      return
-    }
-
-    const { error: updateError } = await supabase
+    // Atomic update: only succeeds if voucher is still active
+    const { data: updated, error: updateError } = await supabase
       .from('vouchers')
       .update({ status: 'used' })
       .eq('id', voucher.id)
+      .eq('status', 'active')
+      .select('id')
 
     if (updateError) {
       setResult({ type: 'error', message: 'Failed to redeem voucher. Please try again.' })
+    } else if (!updated || updated.length === 0) {
+      setResult({ type: 'error', message: 'This voucher has already been used.' })
     } else {
       setResult({ type: 'success', dealTitle: deal.title })
       setCode('')
@@ -119,8 +118,11 @@ export default function RedeemPage() {
     processingRef.current = true
     setScanMode(false)
     setCode(scannedCode)
-    await redeemCode(scannedCode)
-    processingRef.current = false
+    try {
+      await redeemCode(scannedCode)
+    } finally {
+      processingRef.current = false
+    }
   }
 
   if (loading) {
