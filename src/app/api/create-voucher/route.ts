@@ -140,6 +140,7 @@ export async function POST(req: NextRequest) {
         user_id: user.id,
         qr_code: qrCode,
         status: 'active',
+        ...(expiresAt ? { expires_at: expiresAt } : {}),
       })
       .select()
       .single()

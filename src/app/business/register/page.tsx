@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { ArrowLeft, CheckCircle, Store } from 'lucide-react'
 
 import { supabase } from '@/lib/supabase'
@@ -148,9 +149,7 @@ export default function BusinessRegisterPage() {
         <div className="bg-white rounded-3xl shadow-xl p-8">
           {/* Logo */}
           <div className="text-center mb-8">
-            <div className="w-14 h-14 bg-gradient-to-br from-orange-400 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-3">
-              <Store className="w-7 h-7 text-white" />
-            </div>
+            <Image src="/logo.png" alt="ArubaSave" width={56} height={56} className="rounded-2xl mx-auto mb-3" />
             <h1 className="text-2xl font-bold text-gray-900">List Your Business</h1>
             <p className="text-gray-500 mt-1">Join ArubaSave and reach more customers</p>
           </div>

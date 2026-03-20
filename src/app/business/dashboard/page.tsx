@@ -537,7 +537,7 @@ export default function BusinessDashboardPage() {
               {[
                 { label: 'Vouchers Sold', value: stats.totalVouchersSold, icon: Tag, color: 'bg-orange-50 text-orange-500' },
                 { label: 'Active Deals', value: stats.activeDeals, icon: CheckCircle, color: 'bg-green-50 text-green-500' },
-                { label: 'Total Revenue', value: `$${stats.totalRevenue.toFixed(0)}`, icon: TrendingUp, color: 'bg-blue-50 text-blue-500' },
+                { label: 'Total Earned', value: `$${stats.totalRevenue.toFixed(0)}`, icon: TrendingUp, color: 'bg-blue-50 text-blue-500' },
                 { label: 'Profile Views', value: stats.totalViews, icon: Eye, color: 'bg-purple-50 text-purple-500' },
               ].map((stat) => {
                 const Icon = stat.icon
@@ -656,7 +656,7 @@ export default function BusinessDashboardPage() {
                       <div className="flex items-center gap-3 flex-shrink-0">
                         <div className="text-right">
                           <div className="text-lg font-bold text-gray-900">${(deal.deal_price * deal.vouchers_sold).toFixed(0)}</div>
-                          <div className="text-xs text-gray-500">revenue</div>
+                          <div className="text-xs text-gray-500">earned</div>
                         </div>
                         {!isConfirming && (
                           <div className="flex gap-2">
@@ -1022,19 +1022,6 @@ export default function BusinessDashboardPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Voucher Expiry</label>
-                  <select
-                    value={editFormData.voucher_expiry_hours}
-                    onChange={(e) => setEditFormData({ ...editFormData, voucher_expiry_hours: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
-                  >
-                    <option value="">No expiry (use deal date)</option>
-                    <option value="24">24 hours after claiming</option>
-                    <option value="72">72 hours after claiming</option>
-                    <option value="168">7 days after claiming</option>
-                  </select>
-                </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Deal Image</label>

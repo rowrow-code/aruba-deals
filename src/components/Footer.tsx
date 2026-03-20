@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { MapPin, Instagram, Facebook } from 'lucide-react'
 
 export default function Footer() {
@@ -9,9 +10,7 @@ export default function Footer() {
           {/* Brand */}
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center space-x-2 mb-4">
-              <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-pink-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">AS</span>
-              </div>
+              <Image src="/logo.png" alt="ArubaSave" width={40} height={40} className="rounded-lg" />
               <span className="font-bold text-xl text-white">
                 Aruba<span className="text-orange-500">Save</span>
               </span>

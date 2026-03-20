@@ -24,7 +24,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { dealId, title, description, original_price, deal_price, total_available, expiration_date, image_url, included, voucher_expiry_hours } = body
+    const { dealId, title, description, original_price, deal_price, total_available, expiration_date, image_url, included } = body
 
     if (!dealId) {
       return NextResponse.json({ error: 'No dealId provided' }, { status: 400 })
@@ -55,7 +55,6 @@ export async function PATCH(req: NextRequest) {
     if (expiration_date !== undefined) updates.expiration_date = new Date(expiration_date).toISOString()
     if (image_url !== undefined) updates.images = image_url ? [image_url] : []
     if (included !== undefined) updates.included = included.split('\n').map((s: string) => s.trim()).filter(Boolean)
-    if (voucher_expiry_hours !== undefined) updates.voucher_expiry_hours = voucher_expiry_hours ? Number(voucher_expiry_hours) : null
 
     const { data: updated, error: updateError } = await admin
       .from('deals')
