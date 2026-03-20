@@ -53,49 +53,38 @@ export default function RedeemPage() {
   }, [router])
 
   const redeemCode = async (rawCode: string) => {
-    if (!business || !userId) return
+    if (!business) return
     const trimmed = rawCode.toUpperCase().trim()
     if (!trimmed) return
 
     setSubmitting(true)
     setResult(null)
 
-    const { data: voucher, error } = await supabase
-      .from('vouchers')
-      .select('*, deal:deals(*, business:businesses(*))')
-      .eq('qr_code', trimmed)
-      .maybeSingle()
-
-    if (error || !voucher) {
-      setResult({ type: 'error', message: 'Voucher not found. Check the code and try again.' })
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
+    if (!token) {
+      setResult({ type: 'error', message: 'Not authenticated. Please log in again.' })
       setSubmitting(false)
       return
     }
 
-    const deal = voucher.deal as { title: string; business: { owner_id: string } }
+    const res = await fetch('/api/redeem-voucher', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ qrCode: trimmed }),
+    })
 
-    if (deal.business.owner_id !== userId) {
-      setResult({ type: 'error', message: 'This voucher is for a different business.' })
-      setSubmitting(false)
-      return
-    }
+    const json = await res.json()
 
-    // Atomic update: only succeeds if voucher is still active
-    const { data: updated, error: updateError } = await supabase
-      .from('vouchers')
-      .update({ status: 'used' })
-      .eq('id', voucher.id)
-      .eq('status', 'active')
-      .select('id')
-
-    if (updateError) {
-      setResult({ type: 'error', message: 'Failed to redeem voucher. Please try again.' })
-    } else if (!updated || updated.length === 0) {
-      setResult({ type: 'error', message: 'This voucher has already been used.' })
-    } else {
-      setResult({ type: 'success', dealTitle: deal.title })
+    if (res.ok) {
+      setResult({ type: 'success', dealTitle: json.dealTitle })
       setCode('')
       setScanMode(false)
+    } else {
+      setResult({ type: 'error', message: json.error || 'Failed to redeem voucher.' })
     }
 
     setSubmitting(false)
