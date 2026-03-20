@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, TrendingUp, Eye, CheckCircle, Tag, Trash2, Upload, X, AlertTriangle, Store, XCircle, Clock, ClipboardList } from 'lucide-react'
+import { Plus, TrendingUp, Eye, CheckCircle, Tag, Trash2, Upload, X, AlertTriangle, Store, XCircle, Clock, ClipboardList, Pencil } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { getMyBusiness, getBusinessDeals, createDeal } from '@/lib/queries'
 import { Business, Deal } from '@/lib/types'
@@ -183,7 +183,7 @@ function ImageUploader({ value, onChange }: { value: string; onChange: (url: str
 // ── Main page ───────────────────────────────────────────────────────────────
 export default function BusinessDashboardPage() {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'overview' | 'deals' | 'create'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'deals' | 'create' | 'edit'>('overview')
   const [business, setBusiness] = useState<Business | null>(null)
   const [deals, setDeals] = useState<Deal[]>([])
   const [loading, setLoading] = useState(true)
@@ -206,6 +206,20 @@ export default function BusinessDashboardPage() {
   const [submitting, setSubmitting] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [editingDeal, setEditingDeal] = useState<Deal | null>(null)
+  const [editFormData, setEditFormData] = useState({
+    title: '',
+    description: '',
+    original_price: '',
+    deal_price: '',
+    total_available: '',
+    expiration_date: '',
+    image_url: '',
+    included: '',
+    voucher_expiry_hours: '',
+  })
+  const [editSubmitting, setEditSubmitting] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
   const [supportMessage, setSupportMessage] = useState('')
   const [sendingSupport, setSendingSupport] = useState(false)
   const [supportSent, setSupportSent] = useState(false)
@@ -315,6 +329,51 @@ export default function BusinessDashboardPage() {
     }
     setConfirmDeleteId(null)
     setDeletingId(null)
+  }
+
+  const handleEditClick = (deal: Deal) => {
+    setEditingDeal(deal)
+    setEditFormData({
+      title: deal.title,
+      description: deal.description || '',
+      original_price: String(deal.original_price),
+      deal_price: String(deal.deal_price),
+      total_available: String(deal.total_available),
+      expiration_date: deal.expiration_date ? new Date(deal.expiration_date).toISOString().split('T')[0] : '',
+      image_url: deal.images?.[0] || '',
+      included: Array.isArray(deal.included) ? deal.included.join('\n') : '',
+      voucher_expiry_hours: deal.voucher_expiry_hours ? String(deal.voucher_expiry_hours) : '',
+    })
+    setEditError(null)
+    setActiveTab('edit')
+  }
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingDeal) return
+    setEditSubmitting(true)
+    setEditError(null)
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/update-deal', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token ?? ''}`,
+        },
+        body: JSON.stringify({ dealId: editingDeal.id, ...editFormData }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Failed to update deal')
+      setDeals((prev) => prev.map((d) => d.id === editingDeal.id ? { ...d, ...json.deal } : d))
+      setEditingDeal(null)
+      setActiveTab('deals')
+    } catch (err: any) {
+      setEditError(err?.message || 'Failed to update deal')
+    } finally {
+      setEditSubmitting(false)
+    }
   }
 
   const handleSendSupport = async (e: React.FormEvent) => {
@@ -459,6 +518,13 @@ export default function BusinessDashboardPage() {
                 {tab === 'create' ? '+ Create Deal' : tab}
               </button>
             ))}
+            {activeTab === 'edit' && editingDeal && (
+              <button
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-orange-500 text-white"
+              >
+                Edit Deal
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -593,13 +659,22 @@ export default function BusinessDashboardPage() {
                           <div className="text-xs text-gray-500">revenue</div>
                         </div>
                         {!isConfirming && (
-                          <button
-                            onClick={() => setConfirmDeleteId(deal.id)}
-                            className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-500 font-semibold px-3 py-2 rounded-xl text-sm transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            Remove
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleEditClick(deal)}
+                              className="flex items-center gap-1.5 bg-gray-50 hover:bg-gray-100 text-gray-600 font-semibold px-3 py-2 rounded-xl text-sm transition-colors"
+                            >
+                              <Pencil className="w-4 h-4" />
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteId(deal.id)}
+                              className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-500 font-semibold px-3 py-2 rounded-xl text-sm transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Remove
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -857,6 +932,153 @@ export default function BusinessDashboardPage() {
                 </form>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Edit Deal tab */}
+        {activeTab === 'edit' && editingDeal && (
+          <div className="max-w-2xl">
+            <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="font-bold text-gray-900 text-xl">Edit Deal</h2>
+                <button
+                  type="button"
+                  onClick={() => { setEditingDeal(null); setActiveTab('deals') }}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <form onSubmit={handleEditSubmit} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Deal Title *</label>
+                  <input
+                    type="text"
+                    value={editFormData.title}
+                    onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
+                    required
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Description *</label>
+                  <textarea
+                    value={editFormData.description}
+                    onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                    required
+                    rows={4}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Original Price ($) *</label>
+                    <input
+                      type="number"
+                      value={editFormData.original_price}
+                      onChange={(e) => setEditFormData({ ...editFormData, original_price: e.target.value })}
+                      required
+                      min="0"
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Deal Price ($) *</label>
+                    <input
+                      type="number"
+                      value={editFormData.deal_price}
+                      onChange={(e) => setEditFormData({ ...editFormData, deal_price: e.target.value })}
+                      required
+                      min="0"
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Available Vouchers *</label>
+                  <input
+                    type="number"
+                    value={editFormData.total_available}
+                    onChange={(e) => setEditFormData({ ...editFormData, total_available: e.target.value })}
+                    required
+                    min={editingDeal.vouchers_sold}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">{editingDeal.vouchers_sold} already sold — cannot set lower than this</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Valid Until *</label>
+                  <input
+                    type="date"
+                    value={editFormData.expiration_date}
+                    onChange={(e) => setEditFormData({ ...editFormData, expiration_date: e.target.value })}
+                    required
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Voucher Expiry</label>
+                  <select
+                    value={editFormData.voucher_expiry_hours}
+                    onChange={(e) => setEditFormData({ ...editFormData, voucher_expiry_hours: e.target.value })}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
+                  >
+                    <option value="">No expiry (use deal date)</option>
+                    <option value="24">24 hours after claiming</option>
+                    <option value="72">72 hours after claiming</option>
+                    <option value="168">7 days after claiming</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Deal Image</label>
+                  <ImageUploader
+                    value={editFormData.image_url}
+                    onChange={(url) => setEditFormData({ ...editFormData, image_url: url })}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">What&apos;s Included</label>
+                  <textarea
+                    value={editFormData.included}
+                    onChange={(e) => setEditFormData({ ...editFormData, included: e.target.value })}
+                    placeholder="List what's included, one per line..."
+                    rows={3}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                  />
+                </div>
+
+                {editError && (
+                  <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600">
+                    {editError}
+                  </div>
+                )}
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => { setEditingDeal(null); setActiveTab('deals') }}
+                    className="flex-1 border border-gray-200 text-gray-600 font-bold py-3.5 rounded-xl transition-colors hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={editSubmitting}
+                    className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-bold py-3.5 rounded-xl transition-colors shadow-lg shadow-orange-200"
+                  >
+                    {editSubmitting ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
       </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
@@ -25,6 +25,7 @@ export default function RedeemPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [scanMode, setScanMode] = useState(false)
   const [scanError, setScanError] = useState<string | null>(null)
+  const processingRef = useRef(false)
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -102,6 +103,7 @@ export default function RedeemPage() {
   }
 
   const resetResult = () => {
+    processingRef.current = false
     setResult(null)
     setCode('')
     setScanMode(false)
@@ -113,9 +115,12 @@ export default function RedeemPage() {
   }
 
   const handleQRScan = async (scannedCode: string) => {
+    if (processingRef.current) return
+    processingRef.current = true
     setScanMode(false)
     setCode(scannedCode)
     await redeemCode(scannedCode)
+    processingRef.current = false
   }
 
   if (loading) {

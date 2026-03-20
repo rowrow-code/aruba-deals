@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No dealId provided' }, { status: 400 })
     }
 
-    // Get active vouchers and clean up any whose deal no longer exists
+    // Get active vouchers and clean up any whose deal no longer exists or has expired
     const { data: activeVouchers } = await admin
       .from('vouchers')
       .select('id, deal_id')
@@ -36,15 +36,17 @@ export async function POST(req: NextRequest) {
 
     if (activeVouchers && activeVouchers.length > 0) {
       const dealIds = activeVouchers.map((v: any) => v.deal_id)
-      const { data: existingDeals } = await admin
+      const today = new Date().toISOString().split('T')[0]
+      const { data: validDeals } = await admin
         .from('deals')
         .select('id')
         .in('id', dealIds)
+        .gte('expiration_date', today)
 
-      const validDealIds = new Set((existingDeals ?? []).map((d: any) => d.id))
+      const validDealIds = new Set((validDeals ?? []).map((d: any) => d.id))
       const ghostVouchers = activeVouchers.filter((v: any) => !validDealIds.has(v.deal_id))
 
-      // Delete ghost vouchers (for deals that were deleted)
+      // Delete ghost vouchers (for deals that were deleted or expired)
       for (const ghost of ghostVouchers) {
         await admin.from('vouchers').delete().eq('id', ghost.id)
       }
@@ -86,12 +88,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'This deal is sold out.' }, { status: 400 })
     }
 
-    // Check if user already has a voucher for this deal
+    // Check if user already has an active voucher for this deal
     const { data: existing } = await admin
       .from('vouchers')
       .select('id')
       .eq('deal_id', dealId)
       .eq('user_id', user.id)
+      .eq('status', 'active')
       .maybeSingle()
 
     if (existing) {

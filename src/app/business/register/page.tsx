@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, CheckCircle, Store } from 'lucide-react'
+
 import { supabase } from '@/lib/supabase'
 
 const categories = ['Restaurants', 'Activities', 'Spa & Wellness', 'Nightlife', 'Fitness', 'Other']
@@ -19,6 +20,7 @@ export default function BusinessRegisterPage() {
     phone: '',
     password: '',
   })
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [needsConfirmation, setNeedsConfirmation] = useState(false)
@@ -288,9 +290,22 @@ export default function BusinessRegisterPage() {
                   </div>
                 ))}
               </div>
-              <div className="bg-orange-50 rounded-xl p-4 text-sm text-orange-700">
-                By registering, you agree to our terms of service. Your business will be reviewed before going live.
-              </div>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-orange-500 flex-shrink-0"
+                  required
+                />
+                <span className="text-sm text-gray-600">
+                  I agree to the{' '}
+                  <Link href="/terms" className="text-orange-500 hover:underline font-medium" target="_blank">
+                    Terms &amp; Conditions
+                  </Link>
+                  . My business will be reviewed before going live.
+                </span>
+              </label>
               {error && (
                 <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600">
                   {error}
@@ -298,7 +313,7 @@ export default function BusinessRegisterPage() {
               )}
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || !agreedToTerms}
                 className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-bold py-3.5 rounded-xl transition-colors shadow-lg shadow-orange-200"
               >
                 {submitting ? 'Submitting...' : 'Submit Application'}
