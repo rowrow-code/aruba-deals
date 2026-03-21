@@ -83,28 +83,24 @@ export default function BusinessRegisterPage() {
 
       if (!userId) throw new Error('Failed to create account')
 
-      // Create/update profile
-      await supabase.from('profiles').upsert({
-        id: userId,
-        email: formData.email,
-        full_name: formData.contactName,
-        role: 'business',
+      // Create profile and business via server-side API (bypasses RLS for unconfirmed users)
+      const res = await fetch('/api/register-business', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          email: formData.email,
+          contactName: formData.contactName,
+          businessName: formData.businessName,
+          category: formData.category,
+          location: formData.location,
+          description: formData.description,
+          phone: formData.phone,
+        }),
       })
-
-      // Insert the business as pending
-      const { data: bizData, error: bizError } = await supabase.from('businesses').insert({
-        name: formData.businessName,
-        category: formData.category,
-        location: formData.location,
-        description: formData.description,
-        contact_name: formData.contactName,
-        contact_email: formData.email,
-        phone: formData.phone,
-        owner_id: userId,
-        status: 'pending',
-      }).select('id').single()
-
-      if (bizError) throw bizError
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error || 'Failed to save business')
+      const bizData = { id: result.businessId }
 
       // Check if email confirmation is needed
       if (!authData?.session && authData?.user) {

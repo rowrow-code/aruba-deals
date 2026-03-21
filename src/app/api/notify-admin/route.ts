@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   const { businessId, businessName, category, location, contactName, contactEmail, phone, supportMessage } = body
 
   const secret = process.env.ADMIN_ACTION_SECRET
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://aruba-deals.vercel.app'
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://arubadeals.vercel.app'
 
   // Handle support message notifications
   if (supportMessage) {
