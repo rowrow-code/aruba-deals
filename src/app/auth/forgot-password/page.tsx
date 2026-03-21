@@ -2,6 +2,7 @@
 
 import { useState, Suspense } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { ArrowLeft, Mail } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -41,9 +42,7 @@ function ForgotPasswordContent() {
 
         <div className="bg-white rounded-3xl shadow-xl p-8">
           <div className="text-center mb-8">
-            <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-3">
-              <span className="text-white font-bold">AS</span>
-            </div>
+            <Image src="/logo.png" alt="ArubaSave" width={56} height={56} className="rounded-2xl mx-auto mb-3" />
             <h1 className="text-2xl font-bold text-gray-900">Forgot password?</h1>
             <p className="text-gray-500 mt-1">We&apos;ll send you a reset link</p>
           </div>

@@ -171,7 +171,13 @@ export default function DealDetailPage() {
           <div className="lg:col-span-3">
             {/* Image gallery */}
             <div className="relative rounded-2xl overflow-hidden h-80 sm:h-96 mb-3">
-              <img src={deal.images[activeImage]} alt={deal.title} className="w-full h-full object-cover" />
+              {deal.images.length > 0 ? (
+                <img src={deal.images[activeImage]} alt={deal.title} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-orange-100 to-pink-100 flex items-center justify-center">
+                  <span className="text-6xl">🌟</span>
+                </div>
+              )}
               <div className="absolute top-4 left-4">
                 <span className="bg-orange-500 text-white font-bold px-3 py-1.5 rounded-full text-sm shadow-lg">
                   Save {discount}%

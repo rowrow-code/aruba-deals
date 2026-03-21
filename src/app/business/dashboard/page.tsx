@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, TrendingUp, Eye, CheckCircle, Tag, Trash2, Upload, X, AlertTriangle, Store, XCircle, Clock, ClipboardList, Pencil } from 'lucide-react'
+import { Plus, TrendingUp, Eye, CheckCircle, Tag, Trash2, Upload, X, AlertTriangle, Store, XCircle, Clock, ClipboardList, Pencil, CalendarDays } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { getMyBusiness, getBusinessDeals, createDeal } from '@/lib/queries'
 import { Business, Deal } from '@/lib/types'
@@ -224,6 +224,9 @@ export default function BusinessDashboardPage() {
   const [sendingSupport, setSendingSupport] = useState(false)
   const [supportSent, setSupportSent] = useState(false)
   const [newSlotLabel, setNewSlotLabel] = useState('')
+  const [showEarningsModal, setShowEarningsModal] = useState(false)
+  const [earningsData, setEarningsData] = useState<{ month: string; total: number; count: number }[]>([])
+  const [earningsLoading, setEarningsLoading] = useState(false)
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -401,6 +404,33 @@ export default function BusinessDashboardPage() {
     setSendingSupport(false)
   }
 
+  const loadMonthlyEarnings = async () => {
+    if (deals.length === 0) { setEarningsData([]); return }
+    setEarningsLoading(true)
+    const dealPriceMap: Record<string, number> = {}
+    deals.forEach((d) => { dealPriceMap[d.id] = d.deal_price })
+
+    const { data } = await supabase
+      .from('vouchers')
+      .select('created_at, deal_id')
+      .in('deal_id', deals.map((d) => d.id))
+
+    const byMonth: Record<string, { total: number; count: number }> = {}
+    for (const v of data || []) {
+      const month = new Date(v.created_at).toISOString().slice(0, 7)
+      if (!byMonth[month]) byMonth[month] = { total: 0, count: 0 }
+      byMonth[month].total += dealPriceMap[v.deal_id] ?? 0
+      byMonth[month].count += 1
+    }
+
+    const sorted = Object.entries(byMonth)
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([month, { total, count }]) => ({ month, total, count }))
+
+    setEarningsData(sorted)
+    setEarningsLoading(false)
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -474,6 +504,7 @@ export default function BusinessDashboardPage() {
   }
 
   return (
+    <>
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-100">
@@ -537,7 +568,7 @@ export default function BusinessDashboardPage() {
               {[
                 { label: 'Vouchers Sold', value: stats.totalVouchersSold, icon: Tag, color: 'bg-orange-50 text-orange-500' },
                 { label: 'Active Deals', value: stats.activeDeals, icon: CheckCircle, color: 'bg-green-50 text-green-500' },
-                { label: 'Total Earned', value: `$${stats.totalRevenue.toFixed(0)}`, icon: TrendingUp, color: 'bg-blue-50 text-blue-500' },
+                { label: 'Total Earned', value: `$${stats.totalRevenue.toFixed(0)}`, icon: TrendingUp, color: 'bg-blue-50 text-blue-500', showMonthly: true },
                 { label: 'Profile Views', value: stats.totalViews, icon: Eye, color: 'bg-purple-50 text-purple-500' },
               ].map((stat) => {
                 const Icon = stat.icon
@@ -548,6 +579,16 @@ export default function BusinessDashboardPage() {
                     </div>
                     <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
                     <div className="text-sm text-gray-500 mt-0.5">{stat.label}</div>
+                    {(stat as any).showMonthly && (
+                      <button
+                        type="button"
+                        onClick={() => { setShowEarningsModal(true); loadMonthlyEarnings() }}
+                        className="mt-2 flex items-center gap-1.5 text-xs text-blue-500 hover:text-blue-600 font-semibold transition-colors"
+                      >
+                        <CalendarDays className="w-3.5 h-3.5" />
+                        By month
+                      </button>
+                    )}
                   </div>
                 )
               })}
@@ -1070,5 +1111,64 @@ export default function BusinessDashboardPage() {
         )}
       </div>
     </div>
+
+    {/* Monthly Earnings Modal */}
+    {showEarningsModal && (
+
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setShowEarningsModal(false)}>
+        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-5 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <CalendarDays className="w-5 h-5 text-white" />
+              <h2 className="text-white font-bold text-lg">Monthly Earnings</h2>
+            </div>
+            <button onClick={() => setShowEarningsModal(false)} className="text-white/70 hover:text-white transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="p-6 max-h-96 overflow-y-auto">
+            {earningsLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+              </div>
+            ) : earningsData.length === 0 ? (
+              <div className="text-center py-8">
+                <CalendarDays className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 text-sm">No earnings data yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {earningsData.map(({ month, total, count }) => {
+                  const label = new Date(month + '-02').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                  const maxTotal = earningsData[0]?.total || 1
+                  const pct = (total / maxTotal) * 100
+                  return (
+                    <div key={month}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-semibold text-gray-800">{label}</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-gray-400">{count} sold</span>
+                          <span className="text-sm font-bold text-gray-900">${total.toFixed(0)}</span>
+                        </div>
+                      </div>
+                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="px-6 pb-5 pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400">
+            <span>{earningsData.reduce((s, e) => s + e.count, 0)} vouchers total</span>
+            <span className="font-semibold text-gray-600">All time: ${stats.totalRevenue.toFixed(0)}</span>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }

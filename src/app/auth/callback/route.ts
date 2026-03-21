@@ -32,6 +32,6 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Code exchange failed — send to login with a message
-  return NextResponse.redirect(`${origin}/auth/login?confirmed=1`)
+  // Code exchange failed — send to login with an error message
+  return NextResponse.redirect(`${origin}/auth/login?error=link_expired`)
 }

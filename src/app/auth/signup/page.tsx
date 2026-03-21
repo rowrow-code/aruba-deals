@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Eye, EyeOff, ArrowLeft, CheckCircle, AlertTriangle } from 'lucide-react'
+import { Eye, EyeOff, ArrowLeft, CheckCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 export default function SignupPage() {
@@ -36,11 +36,7 @@ export default function SignupPage() {
       })
     }
 
-    if (data.session) {
-      window.location.href = '/dashboard'
-    } else {
-      window.location.href = `/auth/check-email?email=${encodeURIComponent(email)}`
-    }
+    window.location.href = `/auth/check-email?email=${encodeURIComponent(email)}`
   }
 
   return (
@@ -68,14 +64,6 @@ export default function SignupPage() {
                 </li>
               ))}
             </ul>
-          </div>
-
-          {/* Password warning notice */}
-          <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5">
-            <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-700">
-              <strong>Remember your password.</strong> Password recovery is not available — if you forget it, you will not be able to log back in.
-            </p>
           </div>
 
           <form onSubmit={handleSignup} className="space-y-4">

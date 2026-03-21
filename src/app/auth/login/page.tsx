@@ -15,6 +15,7 @@ function LoginForm() {
   const [authError, setAuthError] = useState<string | null>(null)
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') || '/dashboard'
+  const linkExpired = searchParams.get('error') === 'link_expired'
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -24,8 +25,13 @@ function LoginForm() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
-      setAuthError(error.message)
-      setLoading(false)
+      if (error.message.toLowerCase().includes('email not confirmed')) {
+        // Redirect to check-email so they can resend the verification link
+        window.location.href = `/auth/check-email?email=${encodeURIComponent(email)}&unconfirmed=1`
+      } else {
+        setAuthError(error.message)
+        setLoading(false)
+      }
     } else {
       window.location.href = redirect
     }
@@ -47,13 +53,15 @@ function LoginForm() {
             <p className="text-gray-500 mt-1">Log in to access your deals</p>
           </div>
 
-          {/* Password warning notice */}
-          <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5">
-            <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-700">
-              <strong>Remember your password.</strong> Password recovery is not available — if you forget it, you will not be able to log back in.
-            </p>
-          </div>
+          {linkExpired && (
+            <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5">
+              <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-700">
+                Your confirmation link has expired or is invalid. Please log in or{' '}
+                <Link href="/auth/signup" className="underline font-medium">create a new account</Link>.
+              </p>
+            </div>
+          )}
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
@@ -69,7 +77,12 @@ function LoginForm() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-gray-700">Password</label>
+                <Link href="/auth/forgot-password" className="text-xs text-orange-500 hover:text-orange-600 font-medium">
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}

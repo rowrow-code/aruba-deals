@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, KeyRound } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -66,9 +67,7 @@ export default function ResetPasswordPage() {
 
         <div className="bg-white rounded-3xl shadow-xl p-8">
           <div className="text-center mb-8">
-            <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-3">
-              <KeyRound className="w-6 h-6 text-white" />
-            </div>
+            <Image src="/logo.png" alt="ArubaSave" width={56} height={56} className="rounded-2xl mx-auto mb-3" />
             <h1 className="text-2xl font-bold text-gray-900">Set new password</h1>
             <p className="text-gray-500 mt-1">Enter your new password below</p>
           </div>

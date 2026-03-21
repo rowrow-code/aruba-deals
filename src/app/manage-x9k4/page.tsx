@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { CheckCircle, XCircle, Clock, Building2, Tag, Trash2, Inbox, ClipboardList, Users, MessageSquare } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, Building2, Tag, Trash2, Inbox, ClipboardList, Users, MessageSquare, CalendarDays, X, TrendingUp } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Business, Deal } from '@/lib/types'
 
@@ -32,6 +32,10 @@ function AdminContent() {
   const [expandedDealId, setExpandedDealId] = useState<string | null>(null)
   const [dealVouchers, setDealVouchers] = useState<Record<string, any[]>>({})
   const [dealVouchersLoading, setDealVouchersLoading] = useState<string | null>(null)
+
+  const [showEarningsModal, setShowEarningsModal] = useState(false)
+  const [earningsData, setEarningsData] = useState<{ month: string; total: number; count: number }[]>([])
+  const [earningsLoading, setEarningsLoading] = useState(false)
 
   useEffect(() => {
     if (focusId) setFilter('all')
@@ -152,6 +156,28 @@ function AdminContent() {
     }
   }
 
+  const loadMonthlyEarnings = async () => {
+    setEarningsLoading(true)
+    const { data } = await supabase
+      .from('vouchers')
+      .select('created_at, deal:deals(deal_price)')
+
+    const byMonth: Record<string, { total: number; count: number }> = {}
+    for (const v of data || []) {
+      const month = new Date(v.created_at).toISOString().slice(0, 7)
+      if (!byMonth[month]) byMonth[month] = { total: 0, count: 0 }
+      byMonth[month].total += (v.deal as any)?.deal_price ?? 0
+      byMonth[month].count += 1
+    }
+
+    const sorted = Object.entries(byMonth)
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([month, { total, count }]) => ({ month, total, count }))
+
+    setEarningsData(sorted)
+    setEarningsLoading(false)
+  }
+
   const handleAction = async (business: Business, action: 'approved' | 'rejected') => {
     setActionLoading(business.id)
 
@@ -248,17 +274,29 @@ function AdminContent() {
   }
 
   return (
+    <>
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-pink-500 rounded-lg flex items-center justify-center">
-              <Building2 className="w-4 h-4 text-white" />
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-pink-500 rounded-lg flex items-center justify-center">
+                  <Building2 className="w-4 h-4 text-white" />
+                </div>
+                <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+              </div>
+              <p className="text-gray-500 text-sm">Review and manage business applications</p>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+            <button
+              onClick={() => { setShowEarningsModal(true); loadMonthlyEarnings() }}
+              className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 font-semibold px-4 py-2.5 rounded-xl text-sm transition-colors flex-shrink-0"
+            >
+              <CalendarDays className="w-4 h-4" />
+              Platform Earnings
+            </button>
           </div>
-          <p className="text-gray-500 text-sm">Review and manage business applications</p>
 
           {/* Main tabs */}
           <div className="flex gap-2 mt-5">
@@ -677,6 +715,71 @@ function AdminContent() {
         )}
       </div>
     </div>
+
+    {/* Monthly Earnings Modal */}
+    {showEarningsModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setShowEarningsModal(false)}>
+        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-5 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <TrendingUp className="w-5 h-5 text-white" />
+              <div>
+                <h2 className="text-white font-bold text-lg leading-tight">Platform Earnings</h2>
+                <p className="text-white/70 text-xs">All businesses combined</p>
+              </div>
+            </div>
+            <button onClick={() => setShowEarningsModal(false)} className="text-white/70 hover:text-white transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="p-6 max-h-96 overflow-y-auto">
+            {earningsLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+              </div>
+            ) : earningsData.length === 0 ? (
+              <div className="text-center py-8">
+                <CalendarDays className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 text-sm">No earnings data yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {earningsData.map(({ month, total, count }) => {
+                  const label = new Date(month + '-02').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                  const maxTotal = earningsData[0]?.total || 1
+                  const pct = (total / maxTotal) * 100
+                  return (
+                    <div key={month}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-semibold text-gray-800">{label}</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-gray-400">{count} sold</span>
+                          <span className="text-sm font-bold text-gray-900">${total.toFixed(0)}</span>
+                        </div>
+                      </div>
+                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {earningsData.length > 0 && (
+            <div className="px-6 pb-5 pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400">
+              <span>{earningsData.reduce((s, e) => s + e.count, 0)} vouchers total</span>
+              <span className="font-semibold text-gray-600">
+                All time: ${earningsData.reduce((s, e) => s + e.total, 0).toFixed(0)}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+    </>
   )
 }
 
