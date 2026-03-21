@@ -14,52 +14,80 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
-  // Check if user already exists
-  const { data: { users } } = await supabase.auth.admin.listUsers()
-  const existingUser = users.find((u) => u.email === email)
-
   let userId: string
 
-  if (existingUser) {
-    // User already has an account — check if they already have a business
-    const { data: existingBiz } = await supabase
-      .from('businesses')
-      .select('id')
-      .eq('owner_id', existingUser.id)
-      .maybeSingle()
+  // Try to create the user via admin API
+  const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: false,
+    user_metadata: { full_name: contactName, role: 'business' },
+  })
 
-    if (existingBiz) {
-      return NextResponse.json(
-        { error: 'You already have a business registered. Log in to your dashboard to manage it.' },
-        { status: 400 }
-      )
-    }
+  if (createError) {
+    // If email already exists, look them up directly from profiles table
+    if (createError.message.toLowerCase().includes('already') || createError.status === 422) {
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle()
 
-    userId = existingUser.id
-    // Update their role to business
-    await supabase.from('profiles').update({ role: 'business' }).eq('id', userId)
-  } else {
-    // Create new user via admin API — sends confirmation email automatically
-    const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: false, // requires email confirmation
-      user_metadata: { full_name: contactName, role: 'business' },
-    })
+      if (!existingProfile) {
+        // Profile doesn't exist yet — look up via admin listUsers with pagination
+        let foundId: string | null = null
+        let page = 1
+        while (!foundId) {
+          const { data: { users }, error: listError } = await supabase.auth.admin.listUsers({ page, perPage: 50 })
+          if (listError || users.length === 0) break
+          const match = users.find((u) => u.email === email)
+          if (match) { foundId = match.id; break }
+          if (users.length < 50) break
+          page++
+        }
+        if (!foundId) {
+          return NextResponse.json({ error: 'Account exists but could not be located. Please contact support.' }, { status: 500 })
+        }
+        userId = foundId
+      } else {
+        userId = existingProfile.id
+      }
 
-    if (createError) {
+      // Check if this user already has a business
+      const { data: existingBiz } = await supabase
+        .from('businesses')
+        .select('id')
+        .eq('owner_id', userId)
+        .maybeSingle()
+
+      if (existingBiz) {
+        return NextResponse.json(
+          { error: 'You already have a business registered. Log in to your dashboard to manage it.' },
+          { status: 400 }
+        )
+      }
+
+      // Update their role to business
+      await supabase.from('profiles').update({ role: 'business', full_name: contactName }).eq('id', userId)
+    } else {
       return NextResponse.json({ error: createError.message }, { status: 500 })
     }
-
+  } else {
     userId = newUser.user.id
 
-    // Create profile
-    await supabase.from('profiles').upsert({
+    // Create profile for the new user
+    const { error: profileError } = await supabase.from('profiles').upsert({
       id: userId,
       email,
       full_name: contactName,
       role: 'business',
     })
+
+    if (profileError) {
+      // Clean up the auth user we just created to avoid orphaned accounts
+      await supabase.auth.admin.deleteUser(userId)
+      return NextResponse.json({ error: profileError.message }, { status: 500 })
+    }
   }
 
   // Insert business as pending
