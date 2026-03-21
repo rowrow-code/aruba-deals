@@ -67,8 +67,16 @@ export async function POST(request: Request) {
         )
       }
 
-      // Update their role to business
-      await supabase.from('profiles').update({ role: 'business', full_name: contactName }).eq('id', userId)
+      // Upsert profile — creates it if missing (can happen from failed prior attempts)
+      const { error: profileUpsertError } = await supabase.from('profiles').upsert({
+        id: userId,
+        email,
+        full_name: contactName,
+        role: 'business',
+      })
+      if (profileUpsertError) {
+        return NextResponse.json({ error: profileUpsertError.message }, { status: 500 })
+      }
     } else {
       return NextResponse.json({ error: createError.message }, { status: 500 })
     }
