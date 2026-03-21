@@ -5,8 +5,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowLeft, CheckCircle, Store } from 'lucide-react'
 
-import { supabase } from '@/lib/supabase'
-
 const categories = ['Restaurants', 'Activities', 'Spa & Wellness', 'Nightlife', 'Fitness', 'Other']
 
 export default function BusinessRegisterPage() {
@@ -38,58 +36,13 @@ export default function BusinessRegisterPage() {
     setError(null)
 
     try {
-      // Try to create the user account
-      let userId: string | undefined
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: { full_name: formData.contactName, role: 'business' },
-          emailRedirectTo: `${window.location.origin}/auth/callback?next=/business/dashboard`,
-        },
-      })
-
-      if (authError) {
-        // If email already registered, try signing in instead
-        if (authError.message.toLowerCase().includes('already registered') || authError.message.toLowerCase().includes('already been registered')) {
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email: formData.email,
-            password: formData.password,
-          })
-          if (signInError) {
-            throw new Error('An account with this email already exists. Check your password and try again.')
-          }
-          userId = signInData.user?.id
-
-          // Check if they already have a business
-          if (userId) {
-            const { data: existingBiz } = await supabase
-              .from('businesses')
-              .select('id')
-              .eq('owner_id', userId)
-              .maybeSingle()
-            if (existingBiz) {
-              throw new Error('You already have a business registered. Visit your dashboard to manage it.')
-            }
-            // Update their role to business
-            await supabase.from('profiles').update({ role: 'business' }).eq('id', userId)
-          }
-        } else {
-          throw authError
-        }
-      } else {
-        userId = authData.user?.id
-      }
-
-      if (!userId) throw new Error('Failed to create account')
-
-      // Create profile and business via server-side API (bypasses RLS for unconfirmed users)
+      // All auth + DB logic handled server-side to avoid RLS issues
       const res = await fetch('/api/register-business', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId,
           email: formData.email,
+          password: formData.password,
           contactName: formData.contactName,
           businessName: formData.businessName,
           category: formData.category,
@@ -99,13 +52,11 @@ export default function BusinessRegisterPage() {
         }),
       })
       const result = await res.json()
-      if (!res.ok) throw new Error(result.error || 'Failed to save business')
+      if (!res.ok) throw new Error(result.error || 'Something went wrong. Please try again.')
       const bizData = { id: result.businessId }
 
-      // Check if email confirmation is needed
-      if (!authData?.session && authData?.user) {
-        setNeedsConfirmation(true)
-      }
+      // New users always need email confirmation
+      setNeedsConfirmation(true)
 
       // Send email notification to admin
       const adminRes = await fetch('/api/notify-admin', {
