@@ -53,6 +53,20 @@ export async function POST(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+    // Recalculate average rating for the deal and update deals table
+    const { data: allReviews } = await admin
+      .from('reviews')
+      .select('rating')
+      .eq('deal_id', dealId)
+
+    if (allReviews && allReviews.length > 0) {
+      const avg = allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length
+      await admin
+        .from('deals')
+        .update({ rating: Math.round(avg * 10) / 10 })
+        .eq('id', dealId)
+    }
+
     return NextResponse.json({ review: data })
   } catch (err: any) {
     return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 })

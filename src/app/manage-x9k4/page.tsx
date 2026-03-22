@@ -28,6 +28,8 @@ function AdminContent() {
   const [messages, setMessages] = useState<any[]>([])
   const [messagesLoading, setMessagesLoading] = useState(false)
   const [userVoucherCounts, setUserVoucherCounts] = useState<Record<string, number>>({})
+  const [confirmDeleteUserId, setConfirmDeleteUserId] = useState<string | null>(null)
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
 
   const [expandedDealId, setExpandedDealId] = useState<string | null>(null)
   const [dealVouchers, setDealVouchers] = useState<Record<string, any[]>>({})
@@ -96,25 +98,42 @@ function AdminContent() {
 
   const loadUsers = async () => {
     setUsersLoading(true)
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('role', 'customer')
-      .order('created_at', { ascending: false })
-    const userList = data || []
-    setUsers(userList)
-
-    // Get active voucher counts
-    const { data: vouchers } = await supabase
-      .from('vouchers')
-      .select('user_id')
-      .eq('status', 'active')
-    const counts: Record<string, number> = {}
-    for (const v of (vouchers || [])) {
-      counts[v.user_id] = (counts[v.user_id] || 0) + 1
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch('/api/admin-users', {
+      headers: { 'Authorization': `Bearer ${session?.access_token ?? ''}` },
+    })
+    if (res.ok) {
+      const { users: userList, voucherCounts } = await res.json()
+      setUsers(userList || [])
+      setUserVoucherCounts(voucherCounts || {})
     }
-    setUserVoucherCounts(counts)
     setUsersLoading(false)
+  }
+
+  const handleDeleteUser = async (userId: string) => {
+    setDeletingUserId(userId)
+    const { data: { session } } = await supabase.auth.getSession()
+    try {
+      const res = await fetch('/api/admin-users', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token ?? ''}`,
+        },
+        body: JSON.stringify({ userId }),
+      })
+      if (res.ok) {
+        setUsers((prev) => prev.filter((u) => u.id !== userId))
+        setUserVoucherCounts((prev) => { const next = { ...prev }; delete next[userId]; return next })
+      } else {
+        const data = await res.json()
+        alert(`Delete failed: ${data.error || 'Unknown error'}`)
+      }
+    } catch (e: any) {
+      alert(`Delete failed: ${e?.message || 'network error'}`)
+    }
+    setConfirmDeleteUserId(null)
+    setDeletingUserId(null)
   }
 
   const loadMessages = async () => {
@@ -626,40 +645,72 @@ function AdminContent() {
               <p className="text-sm text-gray-500 mb-4">{users.length} registered customers</p>
               <div className="space-y-3">
                 {users.map((user) => (
-                  <div key={user.id} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm flex items-center gap-4">
-                    <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-white text-sm font-bold">
-                        {(user.full_name || user.email || '?').charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-gray-900 truncate">{user.full_name || '—'}</p>
-                      <p className="text-sm text-gray-500 truncate">{user.email}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        Joined {new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                      <div className="flex gap-1.5">
-                        {[1, 2, 3].map((slot) => {
-                          const count = userVoucherCounts[user.id] || 0
-                          const filled = slot <= count
-                          return (
-                            <div
-                              key={slot}
-                              className={`w-4 h-4 rounded-full border-2 transition-colors ${
-                                filled
-                                  ? 'bg-orange-500 border-orange-500'
-                                  : 'bg-white border-gray-300'
-                              }`}
-                            />
-                          )
-                        })}
+                  <div key={user.id} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+                    {confirmDeleteUserId === user.id ? (
+                      <div className="flex items-center justify-between gap-4">
+                        <p className="text-sm text-gray-700">Remove <strong>{user.full_name || user.email}</strong>? This is permanent.</p>
+                        <div className="flex gap-2 flex-shrink-0">
+                          <button
+                            onClick={() => setConfirmDeleteUserId(null)}
+                            className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(user.id)}
+                            disabled={deletingUserId === user.id}
+                            className="px-3 py-1.5 text-sm bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors disabled:opacity-50"
+                          >
+                            {deletingUserId === user.id ? 'Removing…' : 'Yes, Remove'}
+                          </button>
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-500">
-                        {userVoucherCounts[user.id] || 0}/3 vouchers
+                    ) : (
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-white text-sm font-bold">
+                            {(user.full_name || user.email || '?').charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-900 truncate">{user.full_name || '—'}</p>
+                          <p className="text-sm text-gray-500 truncate">{user.email}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            Joined {new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3 flex-shrink-0">
+                          <div className="flex flex-col items-end gap-1">
+                            <div className="flex gap-1.5">
+                              {[1, 2, 3].map((slot) => {
+                                const count = userVoucherCounts[user.id] || 0
+                                const filled = slot <= count
+                                return (
+                                  <div
+                                    key={slot}
+                                    className={`w-4 h-4 rounded-full border-2 transition-colors ${
+                                      filled
+                                        ? 'bg-orange-500 border-orange-500'
+                                        : 'bg-white border-gray-300'
+                                    }`}
+                                  />
+                                )
+                              })}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {userVoucherCounts[user.id] || 0}/3 vouchers
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => setConfirmDeleteUserId(user.id)}
+                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Remove user"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 ))}
                 {users.length === 0 && (
