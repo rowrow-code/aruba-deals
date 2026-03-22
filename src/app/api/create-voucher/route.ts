@@ -130,6 +130,12 @@ export async function POST(req: NextRequest) {
       expiresAt = expiry.toISOString()
     }
 
+    // Ensure the user has a profile row (vouchers_user_id_fkey references profiles)
+    await admin.from('profiles').upsert(
+      { id: user.id, email: user.email ?? '' },
+      { onConflict: 'id', ignoreDuplicates: true }
+    )
+
     const qrCode = `ARUBA-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
 
     // Insert voucher with only the core columns that are guaranteed to exist
