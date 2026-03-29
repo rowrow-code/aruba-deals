@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { QrCode, Calendar, CheckCircle, Clock, ArrowRight, Tag, User, Trash2, Star } from 'lucide-react'
+import { QrCode, Calendar, CheckCircle, Clock, ArrowRight, User, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { getMyVouchers } from '@/lib/queries'
 import { Voucher } from '@/lib/types'
@@ -85,11 +85,6 @@ export default function DashboardPage() {
     (v) => v.status === 'active' && new Date(v.deal?.expiration_date ?? '9999').getTime() > now
   )
   const usedVouchers = vouchers.filter((v) => v.status === 'used')
-  const totalSaved = vouchers.reduce(
-    (sum, v) => sum + ((v.deal?.original_price ?? 0) - (v.deal?.deal_price ?? 0)),
-    0
-  )
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -106,11 +101,10 @@ export default function DashboardPage() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             {[
               { label: 'Active Vouchers', value: activeVouchers.length, icon: QrCode, color: 'text-orange-500 bg-orange-50' },
               { label: 'Deals Used', value: usedVouchers.length, icon: CheckCircle, color: 'text-green-500 bg-green-50' },
-              { label: 'Total Saved', value: `$${totalSaved.toFixed(0)}`, icon: Tag, color: 'text-purple-500 bg-purple-50' },
             ].map((stat) => {
               const Icon = stat.icon
               return (
@@ -267,13 +261,6 @@ export default function DashboardPage() {
                           Used
                         </div>
                       </div>
-                      <Link
-                        href={`/deals/${deal.id}#reviews`}
-                        className="flex items-center gap-1.5 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 font-semibold px-3 py-2 rounded-xl text-sm transition-colors flex-shrink-0"
-                      >
-                        <Star className="w-4 h-4" />
-                        Review
-                      </Link>
                     </div>
                   </div>
                 )
